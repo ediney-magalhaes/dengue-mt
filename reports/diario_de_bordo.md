@@ -19,27 +19,27 @@
 - Registro no Google Earth Engine (plano Comunidade — IFMT)
 - Criação do README completo com contexto, arquitetura, escolhas técnicas e roadmap
 
-**🔧 Decisões técnicas tomadas:**
+**Decisões técnicas tomadas:**
 - Pasta do projeto no OneDrive para backup automático — ambiente Conda fora do OneDrive para evitar conflitos de sincronização
 - Adotada convenção **Conventional Commits** para versionamento (`feat:`, `docs:`, `fix:`, etc.)
 - Estratégia de branches: `dev` para desenvolvimento, `main` para entregas estáveis
 
-**💡 Aprendizados:**
+**Aprendizados:**
 - Conda requer aceitação de Terms of Service nos canais antes do primeiro uso (`conda tos accept`)
 - `conda init powershell` é necessário para integração com o terminal do VSCode no Windows
 - Primeira execução do Jupyter demora mais — kernel inicializa na primeira célula
 
-**⚠️ Dificuldades encontradas:**
+**Dificuldades encontradas:**
 - Terminal do VSCode não mostrava `(dengue-mt)` após ativação — resolvido com `conda init powershell` + reinício do VSCode
 
-**⏭️ Próximos passos (Semana 1 — continuação):**
-- [x] Baixar dados SINAN/MT (2018–2024) no DATASUS ✅
-- [x] Baixar dados climáticos do INMET para MT ✅
+**Próximos passos (Semana 1 — continuação):**
+- [x] Baixar dados SINAN/MT (2018–2024) no DATASUS
+- [x] Baixar dados climáticos do INMET para MT
 - [ ] Criar notebook `01_coleta_dados.ipynb`
 
 ---
 
-## 📅 Semana 2 — Engenharia de Dados I
+## 📅 Semana 1 — Engenharia de Dados I
 
 ### 11/03/2026
 
@@ -54,25 +54,25 @@
 - Criação do script `src/download_inmet.py` para reprodutibilidade do pipeline
 - Preenchimento completo do questionário de planejamento do projeto para o orientador
 
-**🔧 Decisões técnicas tomadas:**
+**Decisões técnicas tomadas:**
 - Abandonado o `pySUS` no Windows — substituído pelo `datasus-fetcher` que não requer compilação
 - Dados SINAN baixados em escala nacional (BR) — filtro por MT será aplicado no Python durante a limpeza
 - Dados INMET baixados como pacote anual completo — filtro por estações do MT na Semana 2
 - Scripts de download salvos em `src/` para garantir reprodutibilidade do pipeline de coleta
 
-**💡 Aprendizados:**
+**Aprendizados:**
 - Portais do governo (DATASUS, INMET) bloqueiam downloads diretos via navegadores modernos e requisições sem `User-Agent`
 - O `datasus-fetcher` é a forma mais confiável de acessar dados do DATASUS via Python no Windows
 - Adicionar `User-Agent: Mozilla/5.0` nas requisições HTTP resolve bloqueios 403 em portais públicos
 - Arquivos `.dbc` são o formato nativo do DATASUS — precisarão de conversão para CSV/Parquet na Semana 2
 
-**⚠️ Dificuldades encontradas:**
+**Dificuldades encontradas:**
 - `pySUS` incompatível com Windows — requer `unistd.h` que não existe no sistema
 - FTP do DATASUS e URLs do S3 bloqueados para acesso direto — resolvido com `datasus-fetcher`
 - Portal INMET retornava erro 403 sem header `User-Agent` — resolvido com requisição customizada
 
-**⏭️ Próximos passos (Semana 2):**
-- [ ] Converter arquivos `.dbc` do SINAN para CSV/Parquet
+**Próximos passos (Semana 2):**
+- [x] Converter arquivos `.dbc` do SINAN para CSV/Parquet
 - [ ] Filtrar dados por estado MT e municípios Cuiabá e Várzea Grande
 - [ ] Descompactar e explorar os ZIPs do INMET — filtrar estações do MT
 - [ ] Fazer merge das bases epidemiológica e climática por data
@@ -96,20 +96,41 @@
   - **Total parcial: 173.737 registros do MT**
 - 2024 falhou por limite de RAM do Colab gratuito (arquivo de 274MB)
 
-**🔧 Decisões técnicas:**
+**Decisões técnicas:**
 - Conversão .dbc → Parquet será feita via Google Colab (Linux)
 - Dados nacionais são baixados e filtrados por `SG_UF_NOT == '51'` (código MT)
 - 2024 será processado separadamente com leitura em chunks para economizar RAM
 
-**⚠️ Dificuldades:**
+**Dificuldades:**
 - Colab gratuito tem limite de RAM (~12GB) — arquivo de 2024 com 274MB excedeu ao ser carregado em memória
 - Solução: processar 2024 em chunks e salvar incrementalmente
 
-**⏭️ Próximos passos:**
-- [ ] Processar 2024 em chunks no Colab
-- [ ] Salvar dataset consolidado MT em Parquet
-- [ ] Baixar arquivo para o OneDrive
+**Próximos passos:**
+- [x] Processar 2024 em chunks no Colab
+- [x] Salvar dataset consolidado MT em Parquet
+- [x] Baixar arquivo para o OneDrive
 - [ ] Explorar colunas e qualidade dos dados
+
+
+### 12/03/2026
+
+**✅ O que foi feito:**
+- Processamento do ano 2022 com tratamento especial de colunas object
+- Processamento do ano 2024 em chunks (219 arquivos parquet) para economizar RAM
+- Download e organização de todos os arquivos em `data/processed/sinan/`
+- Criação do script `src/converter_sinan_dbc.py` — reproduz todo o processo de conversão
+- Dataset SINAN MT 2018–2024 completo: **216.479 registros**
+
+**Decisões técnicas:**
+- Colunas com dtype `object` convertidas para `str` antes de salvar em Parquet
+- 2024 processado arquivo por arquivo (219 partições) para evitar estouro de RAM
+- Script de conversão documentado com instruções para rodar no Google Colab
+
+**Próximos passos:**
+- [ ] Explorar colunas do dataset SINAN — dicionário de variáveis
+- [ ] Descompactar e filtrar dados climáticos INMET por estações do MT
+- [ ] Fazer merge das bases epidemiológica e climática por data
+- [ ] Criar notebook `01_eda_exploratoria.ipynb`
 
 ---
 

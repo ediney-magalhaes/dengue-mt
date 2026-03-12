@@ -33,14 +33,50 @@
 - Terminal do VSCode não mostrava `(dengue-mt)` após ativação — resolvido com `conda init powershell` + reinício do VSCode
 
 **⏭️ Próximos passos (Semana 1 — continuação):**
-- [ ] Baixar dados SINAN/MT (2018–2024) no DATASUS
-- [ ] Baixar dados climáticos do INMET para MT
+- [x] Baixar dados SINAN/MT (2018–2024) no DATASUS ✅
+- [x] Baixar dados climáticos do INMET para MT ✅
 - [ ] Criar notebook `01_coleta_dados.ipynb`
 
 ---
 
 ## 📅 Semana 2 — Engenharia de Dados I
-> *A preencher*
+
+### 11/03/2026
+
+**✅ O que foi feito hoje:**
+- Retorno ao ambiente — verificação de que conda, git e branch `dev` estavam ativos e corretos
+- Tentativa de instalação do `pySUS` para download dos dados SINAN — falhou por incompatibilidade do `pyreaddbc` com Windows (ausência do `unistd.h`)
+- Instalação do `Microsoft C++ Build Tools` para resolver dependência de compilação
+- Descoberta e instalação do `datasus-fetcher` como solução alternativa ao pySUS
+- Download bem-sucedido dos dados SINAN/Dengue 2018–2024 (~624 MB) via `datasus-fetcher`
+- Criação do script `src/download_sinan.py` para reprodutibilidade do pipeline
+- Download bem-sucedido dos dados climáticos INMET 2018–2024 (todas estações automáticas) via script Python com header customizado
+- Criação do script `src/download_inmet.py` para reprodutibilidade do pipeline
+- Preenchimento completo do questionário de planejamento do projeto para o orientador
+
+**🔧 Decisões técnicas tomadas:**
+- Abandonado o `pySUS` no Windows — substituído pelo `datasus-fetcher` que não requer compilação
+- Dados SINAN baixados em escala nacional (BR) — filtro por MT será aplicado no Python durante a limpeza
+- Dados INMET baixados como pacote anual completo — filtro por estações do MT na Semana 2
+- Scripts de download salvos em `src/` para garantir reprodutibilidade do pipeline de coleta
+
+**💡 Aprendizados:**
+- Portais do governo (DATASUS, INMET) bloqueiam downloads diretos via navegadores modernos e requisições sem `User-Agent`
+- O `datasus-fetcher` é a forma mais confiável de acessar dados do DATASUS via Python no Windows
+- Adicionar `User-Agent: Mozilla/5.0` nas requisições HTTP resolve bloqueios 403 em portais públicos
+- Arquivos `.dbc` são o formato nativo do DATASUS — precisarão de conversão para CSV/Parquet na Semana 2
+
+**⚠️ Dificuldades encontradas:**
+- `pySUS` incompatível com Windows — requer `unistd.h` que não existe no sistema
+- FTP do DATASUS e URLs do S3 bloqueados para acesso direto — resolvido com `datasus-fetcher`
+- Portal INMET retornava erro 403 sem header `User-Agent` — resolvido com requisição customizada
+
+**⏭️ Próximos passos (Semana 2):**
+- [ ] Converter arquivos `.dbc` do SINAN para CSV/Parquet
+- [ ] Filtrar dados por estado MT e municípios Cuiabá e Várzea Grande
+- [ ] Descompactar e explorar os ZIPs do INMET — filtrar estações do MT
+- [ ] Fazer merge das bases epidemiológica e climática por data
+- [ ] Criar notebook `01_eda_exploratoria.ipynb` com primeiras visualizações
 
 ---
 

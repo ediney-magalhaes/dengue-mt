@@ -78,6 +78,39 @@
 - [ ] Fazer merge das bases epidemiológica e climática por data
 - [ ] Criar notebook `01_eda_exploratoria.ipynb` com primeiras visualizações
 
+
+### 11/03/2026 — Sessão noturna
+
+**✅ O que foi feito:**
+- Início da Semana 2 — Engenharia de Dados
+- Tentativa de instalação do `pyreaddbc` no Windows — falhou novamente (unistd.h)
+- Estratégia alternativa: uso do Google Colab para conversão dos .dbc para Parquet
+- Instalação do `pySUS` no Colab (Linux) — funcionou perfeitamente
+- Conversão e filtro por MT bem-sucedidos para 2018–2023:
+  - 2018: 10.131 registros
+  - 2019: 17.855 registros
+  - 2020: 47.631 registros
+  - 2021: 34.174 registros
+  - 2022: 35.341 registros
+  - 2023: 28.605 registros
+  - **Total parcial: 173.737 registros do MT**
+- 2024 falhou por limite de RAM do Colab gratuito (arquivo de 274MB)
+
+**🔧 Decisões técnicas:**
+- Conversão .dbc → Parquet será feita via Google Colab (Linux)
+- Dados nacionais são baixados e filtrados por `SG_UF_NOT == '51'` (código MT)
+- 2024 será processado separadamente com leitura em chunks para economizar RAM
+
+**⚠️ Dificuldades:**
+- Colab gratuito tem limite de RAM (~12GB) — arquivo de 2024 com 274MB excedeu ao ser carregado em memória
+- Solução: processar 2024 em chunks e salvar incrementalmente
+
+**⏭️ Próximos passos:**
+- [ ] Processar 2024 em chunks no Colab
+- [ ] Salvar dataset consolidado MT em Parquet
+- [ ] Baixar arquivo para o OneDrive
+- [ ] Explorar colunas e qualidade dos dados
+
 ---
 
 ## 📅 Semana 3 — Dados Geoespaciais e Satélite

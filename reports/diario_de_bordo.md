@@ -35,7 +35,6 @@
 **Próximos passos (Semana 1 — continuação):**
 - [x] Baixar dados SINAN/MT (2018–2024) no DATASUS
 - [x] Baixar dados climáticos do INMET para MT
-- [ ] Criar notebook `01_coleta_dados.ipynb`
 
 ---
 
@@ -73,10 +72,10 @@
 
 **Próximos passos (Semana 2):**
 - [x] Converter arquivos `.dbc` do SINAN para CSV/Parquet
-- [ ] Filtrar dados por estado MT e municípios Cuiabá e Várzea Grande
-- [ ] Descompactar e explorar os ZIPs do INMET — filtrar estações do MT
-- [ ] Fazer merge das bases epidemiológica e climática por data
-- [ ] Criar notebook `01_eda_exploratoria.ipynb` com primeiras visualizações
+- [x] Filtrar dados por estado MT e municípios Cuiabá e Várzea Grande
+- [x] Descompactar e explorar os ZIPs do INMET — filtrar estações do MT
+- [x] Fazer merge das bases epidemiológica e climática por data
+- [x] Criar notebook `01_eda_exploratoria.ipynb` com primeiras visualizações
 
 
 ### 11/03/2026 — Sessão noturna
@@ -109,7 +108,7 @@
 - [x] Processar 2024 em chunks no Colab
 - [x] Salvar dataset consolidado MT em Parquet
 - [x] Baixar arquivo para o OneDrive
-- [ ] Explorar colunas e qualidade dos dados
+- [x] Explorar colunas e qualidade dos dados
 
 
 ### 12/03/2026
@@ -127,10 +126,52 @@
 - Script de conversão documentado com instruções para rodar no Google Colab
 
 **Próximos passos:**
-- [ ] Explorar colunas do dataset SINAN — dicionário de variáveis
-- [ ] Descompactar e filtrar dados climáticos INMET por estações do MT
-- [ ] Fazer merge das bases epidemiológica e climática por data
-- [ ] Criar notebook `01_eda_exploratoria.ipynb`
+- [x] Explorar colunas do dataset SINAN — dicionário de variáveis
+- [x] Descompactar e filtrar dados climáticos INMET por estações do MT
+- [x] Fazer merge das bases epidemiológica e climática por data
+- [x] Criar notebook `01_eda_exploratoria.ipynb`
+
+
+### 13/03/2026
+
+**✅ O que foi feito:**
+- Instalação do `pyarrow` e `fastparquet` no ambiente `dengue-mt` (necessário para leitura de Parquet no Windows)
+- Carregamento do dataset SINAN MT completo (216.479 registros, 123 colunas) no Jupyter
+- Análise exploratória completa dos dados epidemiológicos:
+  - Identificação dos municípios: Cuiabá (510340) e Várzea Grande (510790)
+  - Casos confirmados: 166.525 (76,9% do total)
+  - Classificação: Dengue simples (163.534), c/ Alarme (2.711), Grave (280)
+- Criação de 4 visualizações epidemiológicas salvas em `reports/`:
+  - `fig01_casos_por_ano.png` — tendência crescente 2018–2024
+  - `fig02_sazonalidade.png` — heatmap mensal + padrão sazonal
+  - `fig03_perfil_epidemiologico.png` — sexo, faixa etária, hospitalização
+  - `fig04_serie_temporal.png` — série semanal completa com pico Mai/2024
+- Processamento dos ZIPs do INMET — extração da estação A901 (Cuiabá)
+- Geração do dataset climático diário `data/processed/inmet/inmet_cuiaba_2018_2024.parquet` (2.557 dias)
+- Merge dos dados epidemiológicos e climáticos por data — `data/processed/dengue_clima_merged.parquet` (2.538 dias)
+- Análise de correlação com lag temporal — descoberta do efeito de defasagem
+- Criação dos scripts `src/processar_inmet.py` e `src/criar_dataset_merged.py`
+
+**Descobertas analíticas:**
+- Sazonalidade clara: pico de casos em Fevereiro–Maio (estação chuvosa)
+- Pós-2020 os surtos ficaram maiores — hipóteses: novo sorotipo, El Niño, imunidade esgotada
+- Correlação simples clima × dengue é fraca (r ≈ 0.09–0.25) — efeito de lag explica isso
+- Com defasagem de 5–6 semanas: umidade chega a r = 0.34, precipitação r = 0.26
+- **Conclusão:** o modelo deve usar variáveis climáticas com 4–6 semanas de antecedência
+
+**Decisões técnicas:**
+- Estação A901 (Cuiabá) usada como proxy climático para Cuiabá e Várzea Grande (~10km de distância)
+- Notebooks para análise exploratória e narrativa; scripts `src/` para pipelines reproduzíveis
+- Lag de 4–6 semanas será incorporado como feature no modelo preditivo
+
+**Dificuldades:**
+- OneDrive interfere com salvamento do Jupyter (`File Save Error: Failed to fetch`) — contornado reiniciando o servidor Jupyter
+- Kernel perde variáveis após reinício — resolvido mantendo célula de imports no topo do notebook
+
+**Próximos passos (Semana 2 — conclusão):**
+- [ ] Merge dev → main (entrega Semana 2)
+- [ ] Atualizar README com descobertas da EDA
+- [ ] Iniciar Semana 3 — dados geoespaciais (Google Earth Engine)
 
 ---
 

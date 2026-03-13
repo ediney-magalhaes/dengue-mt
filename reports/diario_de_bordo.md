@@ -19,27 +19,26 @@
 - Registro no Google Earth Engine (plano Comunidade — IFMT)
 - Criação do README completo com contexto, arquitetura, escolhas técnicas e roadmap
 
-**🔧 Decisões técnicas tomadas:**
+**Decisões técnicas tomadas:**
 - Pasta do projeto no OneDrive para backup automático — ambiente Conda fora do OneDrive para evitar conflitos de sincronização
 - Adotada convenção **Conventional Commits** para versionamento (`feat:`, `docs:`, `fix:`, etc.)
 - Estratégia de branches: `dev` para desenvolvimento, `main` para entregas estáveis
 
-**💡 Aprendizados:**
+**Aprendizados:**
 - Conda requer aceitação de Terms of Service nos canais antes do primeiro uso (`conda tos accept`)
 - `conda init powershell` é necessário para integração com o terminal do VSCode no Windows
 - Primeira execução do Jupyter demora mais — kernel inicializa na primeira célula
 
-**⚠️ Dificuldades encontradas:**
+**Dificuldades encontradas:**
 - Terminal do VSCode não mostrava `(dengue-mt)` após ativação — resolvido com `conda init powershell` + reinício do VSCode
 
-**⏭️ Próximos passos (Semana 1 — continuação):**
-- [x] Baixar dados SINAN/MT (2018–2024) no DATASUS ✅
-- [x] Baixar dados climáticos do INMET para MT ✅
-- [ ] Criar notebook `01_coleta_dados.ipynb`
+**Próximos passos (Semana 1 — continuação):**
+- [x] Baixar dados SINAN/MT (2018–2024) no DATASUS
+- [x] Baixar dados climáticos do INMET para MT
 
 ---
 
-## 📅 Semana 2 — Engenharia de Dados I
+## 📅 Semana 1 — Engenharia de Dados I
 
 ### 11/03/2026
 
@@ -54,29 +53,125 @@
 - Criação do script `src/download_inmet.py` para reprodutibilidade do pipeline
 - Preenchimento completo do questionário de planejamento do projeto para o orientador
 
-**🔧 Decisões técnicas tomadas:**
+**Decisões técnicas tomadas:**
 - Abandonado o `pySUS` no Windows — substituído pelo `datasus-fetcher` que não requer compilação
 - Dados SINAN baixados em escala nacional (BR) — filtro por MT será aplicado no Python durante a limpeza
 - Dados INMET baixados como pacote anual completo — filtro por estações do MT na Semana 2
 - Scripts de download salvos em `src/` para garantir reprodutibilidade do pipeline de coleta
 
-**💡 Aprendizados:**
+**Aprendizados:**
 - Portais do governo (DATASUS, INMET) bloqueiam downloads diretos via navegadores modernos e requisições sem `User-Agent`
 - O `datasus-fetcher` é a forma mais confiável de acessar dados do DATASUS via Python no Windows
 - Adicionar `User-Agent: Mozilla/5.0` nas requisições HTTP resolve bloqueios 403 em portais públicos
 - Arquivos `.dbc` são o formato nativo do DATASUS — precisarão de conversão para CSV/Parquet na Semana 2
 
-**⚠️ Dificuldades encontradas:**
+**Dificuldades encontradas:**
 - `pySUS` incompatível com Windows — requer `unistd.h` que não existe no sistema
 - FTP do DATASUS e URLs do S3 bloqueados para acesso direto — resolvido com `datasus-fetcher`
 - Portal INMET retornava erro 403 sem header `User-Agent` — resolvido com requisição customizada
 
-**⏭️ Próximos passos (Semana 2):**
-- [ ] Converter arquivos `.dbc` do SINAN para CSV/Parquet
-- [ ] Filtrar dados por estado MT e municípios Cuiabá e Várzea Grande
-- [ ] Descompactar e explorar os ZIPs do INMET — filtrar estações do MT
-- [ ] Fazer merge das bases epidemiológica e climática por data
-- [ ] Criar notebook `01_eda_exploratoria.ipynb` com primeiras visualizações
+**Próximos passos (Semana 2):**
+- [x] Converter arquivos `.dbc` do SINAN para CSV/Parquet
+- [x] Filtrar dados por estado MT e municípios Cuiabá e Várzea Grande
+- [x] Descompactar e explorar os ZIPs do INMET — filtrar estações do MT
+- [x] Fazer merge das bases epidemiológica e climática por data
+- [x] Criar notebook `01_eda_exploratoria.ipynb` com primeiras visualizações
+
+
+### 11/03/2026 — Sessão noturna
+
+**✅ O que foi feito:**
+- Início da Semana 2 — Engenharia de Dados
+- Tentativa de instalação do `pyreaddbc` no Windows — falhou novamente (unistd.h)
+- Estratégia alternativa: uso do Google Colab para conversão dos .dbc para Parquet
+- Instalação do `pySUS` no Colab (Linux) — funcionou perfeitamente
+- Conversão e filtro por MT bem-sucedidos para 2018–2023:
+  - 2018: 10.131 registros
+  - 2019: 17.855 registros
+  - 2020: 47.631 registros
+  - 2021: 34.174 registros
+  - 2022: 35.341 registros
+  - 2023: 28.605 registros
+  - **Total parcial: 173.737 registros do MT**
+- 2024 falhou por limite de RAM do Colab gratuito (arquivo de 274MB)
+
+**Decisões técnicas:**
+- Conversão .dbc → Parquet será feita via Google Colab (Linux)
+- Dados nacionais são baixados e filtrados por `SG_UF_NOT == '51'` (código MT)
+- 2024 será processado separadamente com leitura em chunks para economizar RAM
+
+**Dificuldades:**
+- Colab gratuito tem limite de RAM (~12GB) — arquivo de 2024 com 274MB excedeu ao ser carregado em memória
+- Solução: processar 2024 em chunks e salvar incrementalmente
+
+**Próximos passos:**
+- [x] Processar 2024 em chunks no Colab
+- [x] Salvar dataset consolidado MT em Parquet
+- [x] Baixar arquivo para o OneDrive
+- [x] Explorar colunas e qualidade dos dados
+
+
+### 12/03/2026
+
+**✅ O que foi feito:**
+- Processamento do ano 2022 com tratamento especial de colunas object
+- Processamento do ano 2024 em chunks (219 arquivos parquet) para economizar RAM
+- Download e organização de todos os arquivos em `data/processed/sinan/`
+- Criação do script `src/converter_sinan_dbc.py` — reproduz todo o processo de conversão
+- Dataset SINAN MT 2018–2024 completo: **216.479 registros**
+
+**Decisões técnicas:**
+- Colunas com dtype `object` convertidas para `str` antes de salvar em Parquet
+- 2024 processado arquivo por arquivo (219 partições) para evitar estouro de RAM
+- Script de conversão documentado com instruções para rodar no Google Colab
+
+**Próximos passos:**
+- [x] Explorar colunas do dataset SINAN — dicionário de variáveis
+- [x] Descompactar e filtrar dados climáticos INMET por estações do MT
+- [x] Fazer merge das bases epidemiológica e climática por data
+- [x] Criar notebook `01_eda_exploratoria.ipynb`
+
+
+### 13/03/2026
+
+**✅ O que foi feito:**
+- Instalação do `pyarrow` e `fastparquet` no ambiente `dengue-mt` (necessário para leitura de Parquet no Windows)
+- Carregamento do dataset SINAN MT completo (216.479 registros, 123 colunas) no Jupyter
+- Análise exploratória completa dos dados epidemiológicos:
+  - Identificação dos municípios: Cuiabá (510340) e Várzea Grande (510790)
+  - Casos confirmados: 166.525 (76,9% do total)
+  - Classificação: Dengue simples (163.534), c/ Alarme (2.711), Grave (280)
+- Criação de 4 visualizações epidemiológicas salvas em `reports/`:
+  - `fig01_casos_por_ano.png` — tendência crescente 2018–2024
+  - `fig02_sazonalidade.png` — heatmap mensal + padrão sazonal
+  - `fig03_perfil_epidemiologico.png` — sexo, faixa etária, hospitalização
+  - `fig04_serie_temporal.png` — série semanal completa com pico Mai/2024
+- Processamento dos ZIPs do INMET — extração da estação A901 (Cuiabá)
+- Geração do dataset climático diário `data/processed/inmet/inmet_cuiaba_2018_2024.parquet` (2.557 dias)
+- Merge dos dados epidemiológicos e climáticos por data — `data/processed/dengue_clima_merged.parquet` (2.538 dias)
+- Análise de correlação com lag temporal — descoberta do efeito de defasagem
+- Criação dos scripts `src/processar_inmet.py` e `src/criar_dataset_merged.py`
+
+**Descobertas analíticas:**
+- Sazonalidade clara: pico de casos em Fevereiro–Maio (estação chuvosa)
+- Pós-2020 os surtos ficaram maiores — hipóteses: novo sorotipo, El Niño, imunidade esgotada
+- Correlação simples clima × dengue é fraca (r ≈ 0.09–0.25) — efeito de lag explica isso
+- Com defasagem de 5–6 semanas: umidade chega a r = 0.34, precipitação r = 0.26
+- **Conclusão:** o modelo deve usar variáveis climáticas com 4–6 semanas de antecedência
+
+**Decisões técnicas:**
+- Estação A901 (Cuiabá) usada como proxy climático para Cuiabá e Várzea Grande (~10km de distância)
+- Notebooks para análise exploratória e narrativa; scripts `src/` para pipelines reproduzíveis
+- Lag de 4–6 semanas será incorporado como feature no modelo preditivo
+
+**Dificuldades:**
+- OneDrive interfere com salvamento do Jupyter (`File Save Error: Failed to fetch`) — contornado reiniciando o servidor Jupyter
+- Kernel perde variáveis após reinício — resolvido mantendo célula de imports no topo do notebook
+
+**Próximos passos (Semana 2 — conclusão):**
+- [ ] Merge dev → main (entrega Semana 2)
+- [ ] Atualizar README com descobertas da EDA
+- [ ] Iniciar Semana 3 — dados geoespaciais (Google Earth Engine)
 
 ---
 

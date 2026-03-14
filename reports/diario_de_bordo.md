@@ -169,9 +169,41 @@
 - Kernel perde variáveis após reinício — resolvido mantendo célula de imports no topo do notebook
 
 **Próximos passos (Semana 2 — conclusão):**
-- [ ] Merge dev → main (entrega Semana 2)
-- [ ] Atualizar README com descobertas da EDA
-- [ ] Iniciar Semana 3 — dados geoespaciais (Google Earth Engine)
+- [x] Merge dev → main (entrega Semana 2)
+- [x] Atualizar README com descobertas da EDA
+- [x] Iniciar Semana 3 — dados geoespaciais (Google Earth Engine)
+
+
+### 14/03/2026
+
+**O que foi feito:**
+- Extração de NDVI e NDWI via Google Earth Engine (Sentinel-2 + MODIS blend)
+  - 3 scripts GEE criados em `src/gee/`
+  - Cobertura 100% com blend S2 (71 meses) + MODIS (13 meses)
+  - NDWI dos meses MODIS imputado com média sazonal
+- Radiação solar via NASA POWER API — 2.557 dias sem falhas
+  - Substituiu sensor INMET A901 defeituoso a partir de 2020
+- ONI Index (El Niño/La Niña) via NOAA — 84 meses 2018–2024
+  - 27 meses El Niño / 28 Neutro / 29 La Niña
+- Feature Engineering completo — dataset final com 55 features × 2.242 registros
+
+**Descobertas:**
+- Sensor de radiação INMET A901 sem dados de 2020 a 2024 — NASA POWER como solução
+- Features de lags de casos são as mais preditivas (r > 0.80)
+- Sazonalidade cíclica (seno/cosseno) superior à representação linear de mês/semana
+- NDVI correlacionado positivamente com casos (r = 0.40) — vegetação = criadouros
+- ONI 2023/24 = El Niño intenso — confirma hipótese do pico de 2024
+
+**Decisões técnicas:**
+- Blend Sentinel-2 + MODIS preferido ao Sentinel-2 puro (cobertura 100% vs 84%)
+- Imputação sazonal do NDWI justificada pela literatura (climatological mean imputation)
+- Anos de pico definidos como 2020 e 2024 — base para feature ciclo_epidemico
+- fase_enso codificada numericamente: La Niña=-1, Neutro=0, El Niño=+1
+
+**Próximos passos:**
+- [ ] Dados IBGE — densidade e saneamento por setor censitário
+- [ ] Merge dev → main (entrega Semana 3)
+- [ ] Iniciar Semana 4 — modelo baseline XGBoost
 
 ---
 

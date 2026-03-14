@@ -201,9 +201,9 @@
 - fase_enso codificada numericamente: La Niña=-1, Neutro=0, El Niño=+1
 
 **Próximos passos:**
-- [ ] Dados IBGE — densidade e saneamento por setor censitário
-- [ ] Merge dev → main (entrega Semana 3)
-- [ ] Iniciar Semana 4 — modelo baseline XGBoost
+- [x] Dados IBGE — Censo 2022 Cuiabá/VG salvo em `data/external/`
+- [x] Merge dev → main (entrega Semana 3)
+- [ ] Semana 4 — modelo baseline XGBoost
 
 ---
 

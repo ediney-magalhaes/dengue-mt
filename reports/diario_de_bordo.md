@@ -77,7 +77,9 @@
 - [x] Fazer merge das bases epidemiológica e climática por data
 - [x] Criar notebook `01_eda_exploratoria.ipynb` com primeiras visualizações
 
+---
 
+## 📅 Semana 2 — Engenharia de Dados II
 ### 11/03/2026 — Sessão noturna
 
 **✅ O que foi feito:**
@@ -132,6 +134,7 @@
 - [x] Criar notebook `01_eda_exploratoria.ipynb`
 
 
+## 📅 Semana 2 —  EDA e Feature Engineering
 ### 13/03/2026
 
 **✅ O que foi feito:**
@@ -173,7 +176,9 @@
 - [x] Atualizar README com descobertas da EDA
 - [x] Iniciar Semana 3 — dados geoespaciais (Google Earth Engine)
 
+---
 
+## 📅 Semana 3 — Dados goespaciais (Google Earth Engine)
 ### 14/03/2026
 
 **O que foi feito:**
@@ -203,57 +208,88 @@
 **Próximos passos:**
 - [x] Dados IBGE — Censo 2022 Cuiabá/VG salvo em `data/external/`
 - [x] Merge dev → main (entrega Semana 3)
-- [ ] Semana 4 — modelo baseline XGBoost
+- [x] Semana 4 — modelo baseline XGBoost
 
 ---
 
-## 📅 Semana 3 — Dados Geoespaciais e Satélite
+
+## 📅 Semana 4 — Modelo Baseline
+### 15/03/2026
+
+**O que foi feito:**
+- Criação do `requirements.txt` com dependências do projeto
+- Instalação das bibliotecas de ML: xgboost, lightgbm, scikit-learn, optuna, shap
+- Notebook `03_modelo_baseline.ipynb` criado
+- Modelo baseline XGBoost treinado com TimeSeriesSplit (5 folds)
+- Modelo LightGBM treinado para comparação
+- Otimização de hiperparâmetros com Optuna (50 trials cada)
+- Análise de importância de features (XGBoost gain + SHAP values)
+
+**Resultados (Folds 2-5):**
+
+| Modelo | MAE | RMSE | R² |
+|---|---|---|---|
+| XGBoost baseline | 18.5 ± 5.7 | 29.7 ± 10.8 | 0.805 ± 0.059 |
+| LightGBM baseline | 18.1 ± 5.7 | 29.6 ± 9.8 | 0.804 ± 0.059 |
+| XGBoost otimizado | 17.3 ± 5.5 | 28.2 ± 9.7 | 0.823 ± 0.047 |
+| LightGBM otimizado | 17.4 ± 5.4 | 27.8 ± 9.8 | **0.830 ± 0.040** |
+
+**Meta atingida: R² ≥ 0.80**
+
+**Descobertas:**
+- XGBoost e LightGBM têm performance equivalente — LightGBM 6x mais rápido
+- Feature mais importante: `casos_lag_7d` (40% da importância)
+- SHAP confirma presença de `umidade_lag_42d` e `oni_index` — features ambientais contribuem
+- Picos extremos (>300 casos/dia) ainda subestimados — limitação a endereçar no LSTM
+- Fold 1 problemático (R²=-0.44) por pouco dado histórico — excluído das métricas finais
+
+**Decisões técnicas:**
+- NaNs de radiação (41 registros) removidos por ser mais defensável academicamente
+- TimeSeriesSplit com 5 folds — evita data leakage temporal
+- Optuna com 50 trials — balanço entre qualidade e tempo de execução
+- LightGBM otimizado selecionado como modelo principal por R² e estabilidade
+
+**Próximos passos:**
+- [ ] LSTM para séries temporais de casos semanais
+- [ ] CNN para imagens de satélite
+- [ ] Ensemble final XGBoost/LightGBM + LSTM
+- [ ] Atualizar resumo expandido com resultados da modelagem
+
+---
+
+## 📅 Semana 5 — Modelos Avançados
 > *A preencher*
 
 ---
 
-## 📅 Semana 4 — EDA e Feature Engineering
+## 📅 Semana 6 — NN para Imagens de Satélite
 > *A preencher*
 
 ---
 
-## 📅 Semana 5 — Modelo Baseline
+## 📅 Semana 7 — Ensemble e Validação Final
 > *A preencher*
 
 ---
 
-## 📅 Semana 6 — Modelos Avançados
+## 📅 Semana 8 — Dashboard Streamlit
 > *A preencher*
 
 ---
 
-## 📅 Semana 7 — CNN para Imagens de Satélite
+## 📅 Semana 9 — App Mobile MVP
 > *A preencher*
 
 ---
 
-## 📅 Semana 8 — Ensemble e Validação Final
+## 📅 Semana 10 — Integração e Polimento
 > *A preencher*
 
 ---
 
-## 📅 Semana 9 — Dashboard Streamlit
+## 📅 Semana 11 — Entrega e Publicação
 > *A preencher*
 
----
-
-## 📅 Semana 10 — App Mobile MVP
-> *A preencher*
-
----
-
-## 📅 Semana 11 — Integração e Polimento
-> *A preencher*
-
----
-
-## 📅 Semana 12 — Entrega e Publicação
-> *A preencher*
 
 ---
 

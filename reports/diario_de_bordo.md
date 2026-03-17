@@ -250,10 +250,10 @@
 - LightGBM otimizado selecionado como modelo principal por R² e estabilidade
 
 **Próximos passos:**
-- [ ] LSTM para séries temporais de casos semanais
+- [x] LSTM para séries temporais de casos semanais
 - [ ] CNN para imagens de satélite
-- [ ] Ensemble final XGBoost/LightGBM + LSTM
-- [ ] Atualizar resumo expandido com resultados da modelagem
+- [x] Ensemble final XGBoost/LightGBM + LSTM
+- [x] Atualizar resumo expandido com resultados da modelagem
 
 ### 16/03/2026
 
@@ -300,8 +300,8 @@
 - LSTM com janela deslizante semanal (retreino contínuo) é referência para Brasil [8]
 
 **Próximos passos:**
-- [ ] Atualizar resumo expandido com resultados finais de modelagem
-- [ ] Merge dev → main (entrega Semana 4-5)
+- [x] Atualizar resumo expandido com resultados finais de modelagem
+- [x] Merge dev → main (entrega Semana 4-5)
 - [ ] Iniciar Semana 5 — CNN para imagens de satélite
 - [ ] Iniciar desenvolvimento do dashboard Streamlit
 

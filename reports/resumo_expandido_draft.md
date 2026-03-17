@@ -104,14 +104,36 @@ Os modelos foram avaliados nos Folds 2–5 (excluindo o Fold 1, que possui apena
 
 A meta de R² ≥ 0,80 foi atingida já no modelo baseline. A análise SHAP confirmou que as features mais impactantes são os lags de casos recentes (inércia do surto), seguidos de sazonalidade cíclica, umidade acumulada com 42 dias de defasagem e NDVI — resultado consistente com a literatura de sistemas de alerta precoce de dengue [1, 2, 8].
 
+### 4.5 Redes neurais — LSTM e CNN+BiLSTM
+
+Foram testadas duas arquiteturas de redes neurais recorrentes. O LSTM simples (janela=28 dias, 128 neurônios) atingiu R²=0,664, enquanto o CNN+BiLSTM — que combina camadas convolucionais para extração de padrões locais com BiLSTM bidirecional — atingiu R²=0,756, confirmando o resultado de [15] de que arquiteturas híbridas superam LSTM simples para previsão de dengue. O LightGBM otimizado (R²=0,871) superou ambas as redes neurais, resultado consistente com a literatura para datasets de tamanho moderado [3, 4]. O ensemble LightGBM (90%) + CNN+BiLSTM (10%) atingiu R²=0,8725.
+
+### 4.6 Rolling Window Training — modelo final
+
+A estratégia de retreinamento contínuo (*rolling window training*), com retreino a cada 90 dias e horizonte de predição de 28 dias, atingiu **R²=0,892 e MAE=17,69 casos/dia** — melhor resultado do projeto. Esta abordagem simula o comportamento do sistema em produção, onde novos dados epidemiológicos e climáticos são incorporados continuamente, favorecendo o aprendizado de padrões inéditos como o surto histórico de 2024. O estudo de [8] adota estratégia equivalente com LSTM nos 27 estados brasileiros, validando a abordagem.
+
+**Ranking final de modelos:**
+
+| Modelo | R² | MAE (casos/dia) |
+|---|---|---|
+| Rolling Window LightGBM | **0,892** | **17,69** |
+| Ensemble LightGBM+CNN/BiLSTM | 0,873 | 21,91 |
+| LightGBM otimizado | 0,871 | 21,83 |
+| XGBoost otimizado | 0,823 | 17,31 |
+| CNN + BiLSTM | 0,756 | 33,34 |
+| LSTM v2 | 0,664 | 38,75 |
+
+**Meta R² ≥ 0,80: superada pelos 3 melhores modelos.**
+
 ---
 
 ## 5. Próximas Etapas
 
-- [ ] LSTM para séries temporais de casos semanais com horizonte de 2–4 semanas
-- [ ] Ensemble final LightGBM + LSTM
-- [ ] Dashboard Streamlit com mapa interativo (Folium)
+- [ ] Dashboard interativo Streamlit com mapa de risco (Folium)
+- [ ] API REST FastAPI para integração com sistemas municipais
+- [ ] Pipeline de retreinamento automático semanal
 - [ ] Validação com a Vigilância Epidemiológica de Cuiabá e Várzea Grande
+- [ ] Evolução futura: CNN sobre imagens Sentinel-2 brutas (v2.0) e Transformer/FWin para horizonte de 60 semanas
 
 ---
 

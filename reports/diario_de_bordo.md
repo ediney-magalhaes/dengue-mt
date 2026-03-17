@@ -250,46 +250,75 @@
 - LightGBM otimizado selecionado como modelo principal por R² e estabilidade
 
 **Próximos passos:**
-- [ ] LSTM para séries temporais de casos semanais
+- [x] LSTM para séries temporais de casos semanais
 - [ ] CNN para imagens de satélite
-- [ ] Ensemble final XGBoost/LightGBM + LSTM
-- [ ] Atualizar resumo expandido com resultados da modelagem
+- [x] Ensemble final XGBoost/LightGBM + LSTM
+- [x] Atualizar resumo expandido com resultados da modelagem
+
+### 16/03/2026
+
+**O que foi feito:**
+- Instalação do TensorFlow 2.21.0
+- Notebook `04_modelo_lstm.ipynb` criado
+- LSTM v1 (janela=14, 64 neurônios): R²=0.653
+- LSTM v2 (janela=28, 128 neurônios): R²=0.664
+- CNN + BiLSTM (janela=28): R²=0.756 — melhor rede neural
+- Otimização de pesos do ensemble — LightGBM (90%) + CNN+BiLSTM (10%): R²=0.8725
+- Rolling Window Training — retreino a cada 90 dias: **R²=0.892** 🏆
+- Discussão estratégica sobre crescimento do dataset e retreinamento contínuo
+
+**Ranking final de modelos:**
+
+| Modelo | R² | MAE |
+|---|---|---|
+| Rolling Window LightGBM | **0.892** | 17.69 |
+| Ensemble LightGBM+CNN/BiLSTM | 0.873 | 21.91 |
+| LightGBM otimizado | 0.871 | 21.83 |
+| XGBoost otimizado | 0.823 | 17.31 |
+| CNN + BiLSTM | 0.756 | 33.34 |
+| LSTM v2 | 0.664 | 38.75 |
+| LSTM v1 | 0.653 | 41.77 |
+
+**Meta R² ≥ 0.80: SUPERADA**
+
+**Descobertas:**
+- LightGBM supera redes neurais no dataset atual (2.242 registros) — alinhado com literatura [3,4]
+- CNN+BiLSTM superior ao LSTM simples (R²=0.756 vs 0.664) — literatura [15] confirmada
+- Ensemble 90/10 melhora marginalmente (+0.0015) — CNN+BiLSTM contribui informação complementar
+- Rolling window é a melhor estratégia — simula produção real com retreinamento contínuo
+- MAE dos retreinos: baixo na estação seca (4-11), alto no pico do surto (34-42) — esperado
+
+**Decisões técnicas:**
+- Modelo final: Rolling Window LightGBM (retreino a cada 90 dias, horizonte 28 dias)
+- LSTM e CNN+BiLSTM documentados como experimentos — perspectiva de melhoria com dataset maior
+- GPU não disponível no Windows nativo — CPU suficiente para o tamanho atual do dataset
+- Retreinamento contínuo via Airflow planejado para Semana 9+
+
+**Decisão estratégica:**
+- Dataset crescerá semana a semana em produção — favorecerá as redes neurais no futuro
+- Transformer/FWin e STGCN identificados na literatura como próximas evoluções do modelo
+- LSTM com janela deslizante semanal (retreino contínuo) é referência para Brasil [8]
+
+**⏭️ Próximos passos:**
+- [x] Atualizar resumo expandido com resultados finais de modelagem
+- [x] Merge dev → main (entrega Semanas 4-5)
+- [ ] Dashboard Streamlit com mapa interativo de risco por bairro (Folium)
+- [ ] API REST FastAPI
+- [ ] Pipeline de retreinamento automático semanal
+- [ ] CNN sobre imagens Sentinel-2 — agendada para v2.0 do produto
 
 ---
 
-## 📅 Semana 5 — Modelos Avançados
+## 📅 Semana 5 — Produto Final (Dashboard + API)
+> *A iniciar*
+
+---
+## 📅 Semana 6 — Validação e Polimento
 > *A preencher*
 
 ---
-
-## 📅 Semana 6 — NN para Imagens de Satélite
+## 📅 Semana 7 — Relatório e Publicação
 > *A preencher*
-
----
-
-## 📅 Semana 7 — Ensemble e Validação Final
-> *A preencher*
-
----
-
-## 📅 Semana 8 — Dashboard Streamlit
-> *A preencher*
-
----
-
-## 📅 Semana 9 — App Mobile MVP
-> *A preencher*
-
----
-
-## 📅 Semana 10 — Integração e Polimento
-> *A preencher*
-
----
-
-## 📅 Semana 11 — Entrega e Publicação
-> *A preencher*
-
 
 ---
 

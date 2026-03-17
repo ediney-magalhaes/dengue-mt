@@ -266,6 +266,11 @@
 - Otimização de pesos do ensemble — LightGBM (90%) + CNN+BiLSTM (10%): R²=0.8725
 - Rolling Window Training — retreino a cada 90 dias: **R²=0.892** 🏆
 - Discussão estratégica sobre crescimento do dataset e retreinamento contínuo
+- Instalação do Streamlit, Folium, Plotly
+- Dashboard v1 criado em `app/dashboard.py`
+- 4 abas funcionando: Série Temporal, Clima & Dengue, Previsão, Sobre o Modelo
+- Sistema de alertas (Alto/Moderado/Baixo) baseado na previsão
+- Sidebar com modelo ativo, R², MAE e última atualização
 
 **Ranking final de modelos:**
 
@@ -300,9 +305,9 @@
 - LSTM com janela deslizante semanal (retreino contínuo) é referência para Brasil [8]
 
 **⏭️ Próximos passos:**
-- [x] Atualizar resumo expandido com resultados finais de modelagem
-- [x] Merge dev → main (entrega Semanas 4-5)
 - [ ] Dashboard Streamlit com mapa interativo de risco por bairro (Folium)
+- [ ] Conectar previsão real ao modelo LightGBM treinado
+- [ ] Mapa interativo Cuiabá/VG com shapefile IBGE
 - [ ] API REST FastAPI
 - [ ] Pipeline de retreinamento automático semanal
 - [ ] CNN sobre imagens Sentinel-2 — agendada para v2.0 do produto

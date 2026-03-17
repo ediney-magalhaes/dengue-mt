@@ -299,47 +299,26 @@
 - Transformer/FWin e STGCN identificados na literatura como próximas evoluções do modelo
 - LSTM com janela deslizante semanal (retreino contínuo) é referência para Brasil [8]
 
-**Próximos passos:**
+**⏭️ Próximos passos:**
 - [x] Atualizar resumo expandido com resultados finais de modelagem
-- [x] Merge dev → main (entrega Semana 4-5)
-- [ ] Iniciar Semana 5 — CNN para imagens de satélite
-- [ ] Iniciar desenvolvimento do dashboard Streamlit
+- [x] Merge dev → main (entrega Semanas 4-5)
+- [ ] Dashboard Streamlit com mapa interativo de risco por bairro (Folium)
+- [ ] API REST FastAPI
+- [ ] Pipeline de retreinamento automático semanal
+- [ ] CNN sobre imagens Sentinel-2 — agendada para v2.0 do produto
 
 ---
 
-## 📅 Semana 5 — Modelos Avançados
+## 📅 Semana 5 — Produto Final (Dashboard + API)
+> *A iniciar*
+
+---
+## 📅 Semana 6 — Validação e Polimento
 > *A preencher*
 
 ---
-
-## 📅 Semana 6 — NN para Imagens de Satélite
+## 📅 Semana 7 — Relatório e Publicação
 > *A preencher*
-
----
-
-## 📅 Semana 7 — Ensemble e Validação Final
-> *A preencher*
-
----
-
-## 📅 Semana 8 — Dashboard Streamlit
-> *A preencher*
-
----
-
-## 📅 Semana 9 — App Mobile MVP
-> *A preencher*
-
----
-
-## 📅 Semana 10 — Integração e Polimento
-> *A preencher*
-
----
-
-## 📅 Semana 11 — Entrega e Publicação
-> *A preencher*
-
 
 ---
 

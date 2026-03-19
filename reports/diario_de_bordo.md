@@ -312,17 +312,66 @@
 - [ ] Pipeline de retreinamento automático semanal
 - [ ] CNN sobre imagens Sentinel-2 — agendada para v2.0 do produto
 
+
+## 📅 Semana 5 — Ajuste de modelos (Comparação com LightGBM)
+### 18/03/2026
+
+**O que foi feito:**
+- Revisão estratégica completa do projeto — 3 pontos críticos redefinidos
+- Planejamento de arquitetura de produção custo zero (DagsHub, Prefect, Dagster, Polars)
+- TFT série única diária: R²=0.459 — underfitting confirmado
+- TFT multi-município semanal (79 municípios × 175 semanas): R²=0.230
+- Google Trends coletado (84 meses, r=0.782) — reservado para TFT futuro
+- N-HiTS recursivo: R²=0.805 — supera meta
+- N-BEATS recursivo: R²=0.787
+
+**Ranking final de modelos:**
+
+| Modelo | R² | MAE | Categoria |
+|---|---|---|---|
+| Rolling Window LightGBM | **0.892** | 17.69 | produção |
+| LightGBM otimizado | 0.871 | 21.83 | baseline |
+| N-HiTS recursivo | 0.805 | 27.36 | deep learning |
+| N-BEATS recursivo | 0.787 | 30.10 | deep learning |
+| CNN + BiLSTM | 0.756 | 33.34 | deep learning |
+| LSTM v2 | 0.664 | 38.75 | deep learning |
+| TFT série única | 0.459 | 43.97 | deep learning |
+| TFT multi-município | 0.230 | 9.27 | deep learning |
+
+**Descobertas:**
+- TFT requer série histórica longa (102+ semanas encoder) — Pillay et al. (2026) IJERPH
+- N-HiTS é o melhor modelo de deep learning puro para o dataset atual
+- Google Trends (r=0.782) é poderoso mas mensal — melhor integrado ao TFT semanal
+- Série SINAN disponível desde 1993 — expansão futura resolverá limitações do TFT
+
+**Decisões estratégicas:**
+- Modelo de produção: Rolling Window LightGBM (R²=0.892)
+- Arquitetura custo zero: DagsHub + Prefect + Dagster + Polars
+- TFT revisitado após expansão série para 1993-presente
+- PatchTST e TimesNet agendados para versão 2.0
+
+**⏭️ Próximos passos — Semana 5 (continuação):**
+- [ ] PatchTST — estado da arte forecasting 2023-2024
+- [ ] TimesNet — converte séries 1D em 2D para padrões sazonais
+- [ ] TFT revisitado com série histórica 1993-presente (SINAN)
+- [ ] Após esgotar modelos → Semana 6: Score de risco por bairro
+
 ---
 
-## 📅 Semana 5 — Produto Final (Dashboard + API)
+## 📅 Semana 6: Score de risco por bairro + Polars + DagsHub
 > *A iniciar*
 
 ---
-## 📅 Semana 6 — Validação e Polimento
+## 📅 Semana 7: Arquitetura Medalhão + Prefect + Dashboard v2
 > *A preencher*
 
 ---
-## 📅 Semana 7 — Relatório e Publicação
+## 📅 Semana 8: Dagster + FastAPI + Deploy Streamlit
+> *A preencher*
+
+---
+
+## 📅 Semana 9: Alertas automáticos + Relatório IFMT + SENIC 2026
 > *A preencher*
 
 ---

@@ -351,10 +351,57 @@
 - PatchTST e TimesNet agendados para versão 2.0
 
 **⏭️ Próximos passos — Semana 5 (continuação):**
-- [ ] PatchTST — estado da arte forecasting 2023-2024
+- [x] PatchTST — estado da arte forecasting 2023-2024
 - [ ] TimesNet — converte séries 1D em 2D para padrões sazonais
-- [ ] TFT revisitado com série histórica 1993-presente (SINAN)
+- [x] TFT revisitado com série histórica 1993-presente (SINAN)
 - [ ] Após esgotar modelos → Semana 6: Score de risco por bairro
+
+
+### 21/03/2026
+
+**O que foi feito:**
+- Expansão da série histórica SINAN: 2007–2024 (18 anos, 440.002 registros)
+- Identificação do esquema de classificação por período:
+  - 2000-2006: sem dados MT no SINAN federal
+  - 2007-2013: `CLASSI_FIN` = '1','2','3'
+  - 2014-2016: período de transição (ambos os esquemas)
+  - 2017-2024: `CLASSI_FIN` = '10','11','12'
+- Série semanal histórica consolidada: 888 semanas | 142 municípios
+- Configuração do Kaggle Notebooks com GPU Tesla T4
+- TFT testado em 5 configurações diferentes no Kaggle com GPU
+- Ranking completo final: 11 modelos avaliados
+
+**Ranking completo final:**
+
+| Modelo | R² | MAE | Status |
+|---|---|---|---|
+| Rolling Window LightGBM | **0.892** | 17.69 | ✅ PRODUÇÃO |
+| LightGBM otimizado | 0.871 | 21.83 | baseline |
+| N-HiTS recursivo | 0.805 | 27.36 | deep learning |
+| N-BEATS recursivo | 0.787 | 30.10 | deep learning |
+| CNN + BiLSTM | 0.756 | 33.34 | deep learning |
+| LSTM v2 | 0.664 | 38.75 | deep learning |
+| TFT diário 2018-2024 | 0.459 | 43.97 | experimental |
+| TFT série histórica 2007-2024 | 0.290 | 245.12 | experimental |
+| TFT multi-município 2018-2024 | 0.230 | 9.27 | experimental |
+| TFT série histórica com clima | 0.174 | 257.02 | experimental |
+| TFT multi-município histórico | -0.169 | 13.74 | experimental |
+
+**Decisão técnica definitiva:**
+- **Modelo de produção: Rolling Window LightGBM (R²=0.892)**
+- TFT documentado como experimento — requer normalização hierárquica por porte de município e dados de sorotipo quando disponíveis
+- Fase 2 — Modelagem oficialmente concluída
+
+**Descobertas:**
+- TFT com múltiplos municípios piora com alta variabilidade entre séries (50k vs 200 casos)
+- GPU T4 Kaggle: treinamento 10x mais rápido que CPU local
+- Série histórica 2007-2024 não melhora TFT sem normalização adequada
+- LightGBM supera todos os modelos de deep learning testados — alinhado com literatura [3,4,9]
+
+**⏭️ Próximos passos — Semana 6:**
+- [ ] Score de risco por bairro (shapefile + Folium)
+- [ ] Migrar scripts para Polars
+- [ ] Configurar DagsHub + MLflow
 
 ---
 

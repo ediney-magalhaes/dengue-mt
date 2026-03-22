@@ -398,17 +398,48 @@
 - Série histórica 2007-2024 não melhora TFT sem normalização adequada
 - LightGBM supera todos os modelos de deep learning testados — alinhado com literatura [3,4,9]
 
-**⏭️ Próximos passos — Semana 6:**
+**Próximos passos — Semana 6:**
 - [ ] Score de risco por bairro (shapefile + Folium)
-- [ ] Migrar scripts para Polars
+- [x] Migrar scripts para Polars
 - [ ] Configurar DagsHub + MLflow
 
 ---
 
-## 📅 Semana 6: Score de risco por bairro + Polars + DagsHub
-> *A iniciar*
+## 📅 Semana 6: Score de risco por bairro + Polars + Hugging Face
+
+### 22/03/2026
+
+**O que foi feito:**
+- Instalação do Polars 1.39.3
+- Implementação da Arquitetura Medalhão com Polars (`src/medallion_migration.py`)
+- Criação das camadas Bronze/Silver/Gold em `data/`
+- Silver SINAN consolidado: 390.048 registros (2007–2024) com filtro robusto por período
+- Silver INMET: 2.478 registros validados e clipados
+- Silver GEE: 84 registros sem nulos
+- Gold: dataset_features_v2 (2.242×55) + série histórica (888 semanas)
+- Avaliação e descarte do DagsHub — problema de autenticação S3 no Windows
+- Configuração do Hugging Face Hub como storage remoto (gratuito, ilimitado para dados públicos)
+- Upload completo Silver + Gold para `edyestatistica/dengue-mt-medallion`
+- Decisão estratégica: Bronze permanece local (dados públicos reproduzíveis pelas fontes originais)
+
+**Decisões técnicas:**
+- Polars substitui Pandas nos pipelines de ingestão — execução paralela nativa, menor consumo de memória
+- Hugging Face Hub substitui DagsHub — mais simples, sem dependência de protocolo S3
+- Bronze permanece local (OneDrive) — Silver e Gold versionados remotamente no HF Hub
+- `.gitignore` atualizado para ignorar `data/bronze/`, `data/silver/`, `data/gold/`
+
+**Decisão estratégica:**
+- Stack de produção custo zero definitiva:
+  - Código: GitHub
+  - Dados Silver+Gold: Hugging Face Hub (ilimitado público)
+  - Dashboard: Streamlit Community Cloud (próxima etapa)
+  - API: Render.com free tier (próxima etapa)
+
+**Próximos passos — Semana 6 (continuação):**
+- [ ] Score de risco por bairro (shapefile IBGE + Folium)
 
 ---
+
 ## 📅 Semana 7: Arquitetura Medalhão + Prefect + Dashboard v2
 > *A preencher*
 
@@ -417,10 +448,8 @@
 > *A preencher*
 
 ---
-
 ## 📅 Semana 9: Alertas automáticos + Relatório IFMT + SENIC 2026
 > *A preencher*
-
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

@@ -1,0 +1,27 @@
+{
+  "modelo": "LightGBM v3 otimizado (Optuna)",
+  "dataset": "dataset_features_v3",
+  "n_features": 53,
+  "n_registros": 2214,
+  "periodo": "2018-02-12 a 2024-12-28",
+  "validacao": "TimeSeriesSplit 5 folds (Folds 2-5)",
+  "metricas_folds_2_5": {
+    "MAE_media": 17.5,
+    "MAE_dp": 5.6,
+    "RMSE_media": 27.9,
+    "RMSE_dp": 9.6,
+    "R2_media": 0.829,
+    "R2_dp": 0.039,
+    "sMAPE_media": 32.4,
+    "sMAPE_dp": 5.5
+  },
+  "best_params": {
+    "learning_rate": 0.04993437617040339,
+    "num_leaves": 72,
+    "min_child_samples": 23,
+    "subsample": 0.8758480010430004,
+    "colsample_bytree": 0.6407712390490528,
+    "reg_alpha": 0.4442512608406364,
+    "reg_lambda": 0.7694877363002522
+  }
+}

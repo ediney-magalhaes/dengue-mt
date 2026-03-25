@@ -468,14 +468,77 @@
 - Indicador "Baixa Confiança" [Lacuna 3] ainda não implementado
 
 **Próximos passos — Semana 6 (conclusão):**
-- [ ] Normalizar score por incidência (casos / pop estimada área abrangência)
-- [ ] Indicador "Baixa Confiança" para unidades com < 50 casos históricos
-- [ ] Merge dev → main
+- [x] Normalizar score por incidência (casos / pop estimada área abrangência)
+- [x] Indicador "Baixa Confiança" para unidades com < 50 casos históricos
+- [x] Merge dev → main
+
+### 24/03/2026
+
+**O que foi feito:**
+- Reconstrução limpa do notebook `08_score_risco_bairro` (zero a zero)
+- Git rebase corrompido resolvido (limpeza manual `.git/rebase-merge`)
+- CNES rebuscado via API (3.099 estabelecimentos) e salvo localmente
+- Score v2 implementado com percentil rank (elimina distorção hospital vs UBS)
+- Indicador "Baixa Confiança" implementado (< 50 casos históricos)
+- Mapa Folium v2 gerado com heatmap + círculos + legenda
+
+**Resultados Score v2:**
+
+| Risco | Unidades |
+|---|---|
+| Muito Alto | 39 |
+| Alto | 38 |
+| Moderado | 38 |
+| Baixo | 38 |
+| Muito Baixo | 38 |
+| ⚠️ Baixa Confiança | 107 |
+| ✅ Alta Confiança | 84 |
+
+**Decisões técnicas:**
+- Percentil rank escolhido sobre normalização por máximo — distribuição equilibrada
+- Heatmap usa apenas unidades de Alta Confiança (≥ 50 casos)
+- CNES salvo em `data/external/cnes_cuiaba_vg.parquet` para reuso
+- Score salvo em `data/external/score_risco_v2.parquet`
+
+**Próximos passos — Semana 7:**
+- [ ] Nowcasting — fator de correção SINAN [Lacuna 2]
+- [ ] Feature `municipio_id` + normalização por 100k hab [Lacuna 1]
+- [ ] NDBI via GEE [Lacuna 6]
+- [ ] Google Trends (pytrends) — Infoveillance
+- [ ] Retreinamento dataset_features_v3 + Rolling Window LightGBM
+- [ ] Prefect — pipeline de ingestão automática
 
 ---
 
 ## 📅 Semana 7: Arquitetura Medalhão + Prefect + Dashboard v2
-> *A preencher*
+
+### 24/03/2026 (continuação)
+#### Nowcasting + Features v3 + Retreinamento
+
+**O que foi feito:**
+- Notebook `09_nowcasting_sinan.ipynb` criado
+- Análise do lag de digitação SINAN: 99.9% dos registros digitados no mesmo ano
+- Fator de completude calculado por semana epidemiológica (2018-2023)
+- Nowcasting implementado: fator 3.0 em jan/fev, ~1.0 em nov/dez
+- dataset_features_v3 gerado: 2.242 × 60 features (+5 novas)
+
+**Novas features v3:**
+- `fator_nowcasting` — fator de correção por semana epidemiológica
+- `casos_nowcast` — casos corrigidos pelo fator
+- `municipio_id` — ID do município (expansão futura)
+- `casos_por_100k` — incidência por 100k habitantes
+- `casos_nowcast_por_100k` — incidência corrigida por 100k
+
+**Descoberta relevante:**
+- O "rabo de peixe" é mais grave em jan/fev (fator 3.0) — exatamente o pico do surto
+- Correção crítica para o modelo não subestimar o início dos surtos
+
+**Próximos passos — Semana 7 (continuação):**
+- [ ] Retreinar Rolling Window LightGBM com dataset_features_v3
+- [ ] Comparar R² v2 vs v3
+- [ ] NDBI via GEE [Lacuna 6]
+- [ ] Google Trends (pytrends)
+- [ ] Prefect — pipeline de ingestão automática
 
 ---
 ## 📅 Semana 8: Dagster + FastAPI + Deploy Streamlit

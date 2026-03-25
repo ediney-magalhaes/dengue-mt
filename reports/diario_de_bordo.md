@@ -468,9 +468,9 @@
 - Indicador "Baixa Confiança" [Lacuna 3] ainda não implementado
 
 **Próximos passos — Semana 6 (conclusão):**
-- [ ] Normalizar score por incidência (casos / pop estimada área abrangência)
-- [ ] Indicador "Baixa Confiança" para unidades com < 50 casos históricos
-- [ ] Merge dev → main
+- [x] Normalizar score por incidência (casos / pop estimada área abrangência)
+- [x] Indicador "Baixa Confiança" para unidades com < 50 casos históricos
+- [x] Merge dev → main
 
 ### 24/03/2026
 
@@ -511,7 +511,34 @@
 ---
 
 ## 📅 Semana 7: Arquitetura Medalhão + Prefect + Dashboard v2
-> *A preencher*
+
+### 24/03/2026 (continuação)
+#### Nowcasting + Features v3 + Retreinamento
+
+**O que foi feito:**
+- Notebook `09_nowcasting_sinan.ipynb` criado
+- Análise do lag de digitação SINAN: 99.9% dos registros digitados no mesmo ano
+- Fator de completude calculado por semana epidemiológica (2018-2023)
+- Nowcasting implementado: fator 3.0 em jan/fev, ~1.0 em nov/dez
+- dataset_features_v3 gerado: 2.242 × 60 features (+5 novas)
+
+**Novas features v3:**
+- `fator_nowcasting` — fator de correção por semana epidemiológica
+- `casos_nowcast` — casos corrigidos pelo fator
+- `municipio_id` — ID do município (expansão futura)
+- `casos_por_100k` — incidência por 100k habitantes
+- `casos_nowcast_por_100k` — incidência corrigida por 100k
+
+**Descoberta relevante:**
+- O "rabo de peixe" é mais grave em jan/fev (fator 3.0) — exatamente o pico do surto
+- Correção crítica para o modelo não subestimar o início dos surtos
+
+**Próximos passos — Semana 7 (continuação):**
+- [ ] Retreinar Rolling Window LightGBM com dataset_features_v3
+- [ ] Comparar R² v2 vs v3
+- [ ] NDBI via GEE [Lacuna 6]
+- [ ] Google Trends (pytrends)
+- [ ] Prefect — pipeline de ingestão automática
 
 ---
 ## 📅 Semana 8: Dagster + FastAPI + Deploy Streamlit

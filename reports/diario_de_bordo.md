@@ -534,11 +534,51 @@
 - Correção crítica para o modelo não subestimar o início dos surtos
 
 **Próximos passos — Semana 7 (continuação):**
-- [ ] Retreinar Rolling Window LightGBM com dataset_features_v3
-- [ ] Comparar R² v2 vs v3
-- [ ] NDBI via GEE [Lacuna 6]
-- [ ] Google Trends (pytrends)
-- [ ] Prefect — pipeline de ingestão automática
+- [x] Retreinar Rolling Window LightGBM com dataset_features_v3
+- [x] Comparar R² v2 vs v3
+- [x] NDBI via GEE [Lacuna 6]
+- [x] Google Trends (pytrends)
+- [x] Prefect — pipeline de ingestão automática
+
+### 25/03/2026
+
+**O que foi feito:**
+- Retreino LightGBM v3 — MAE=17.5 | RMSE=27.9 | R²=0.829 | sMAPE=32.4%
+- Diagnóstico MAPE alto — distorção por valores baixos (1-10 casos): MAPE=137.8%
+- sMAPE implementado como métrica recomendada pela literatura
+- Google Trends MT extraído — r=0.922 com casos (lag=0)
+- dataset_features_v3_trends gerado (64 features)
+- NDBI via GEE extraído — correlação r=-0.446 com casos
+- dataset_features_v4 gerado (67 features)
+- Prefect 3.6.23 — pipeline semanal implementado e testado
+
+**Métricas finais LightGBM v3 (Folds 2-5):**
+
+| Métrica | Média | ±DP |
+|---|---|---|
+| MAE | 17.5 | ±5.6 casos/dia |
+| RMSE | 27.9 | ±9.6 casos/dia |
+| R² | 0.829 | ±0.039 |
+| sMAPE | 32.4% | ±5.5% |
+
+**Decisões técnicas:**
+- sMAPE adotado sobre MAPE — robusto a valores baixos (literatura: Hyndman & Koehler 2006)
+- Google Trends lag=0 tem r=0.922 — comportamento diferente de grandes centros (contribuição original)
+- NDBI interpolação linear — justificada pela literatura (gaps < 20%, série periódica)
+- Prefect substitui Airflow/Dagster — mais simples, free tier, Python nativo
+- Data Contracts implementados no próprio Prefect (sem dbt — volume não justifica)
+
+**Descobertas relevantes:**
+- Google Trends em MT é simultâneo aos casos (lag=0) — diferente do padrão clássico
+- Drift detectado no modelo v3 ao avaliar dataset v4 — comportamento esperado e correto
+- NDBI negativo na maioria dos meses — área predominantemente verde (Cuiabá + vegetação)
+
+**Próximos passos — Semana 8:**
+- [ ] Retreinar LightGBM v4 com dataset_features_v4 (67 features)
+- [ ] Drift monitoring com Evidently
+- [ ] FastAPI — endpoints de previsão
+- [ ] Deploy Streamlit Community Cloud
+- [ ] Agendar Prefect na nuvem (Prefect Cloud free tier)
 
 ---
 ## 📅 Semana 8: Dagster + FastAPI + Deploy Streamlit

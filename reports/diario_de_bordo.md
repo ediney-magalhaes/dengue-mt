@@ -436,7 +436,41 @@
   - API: Render.com free tier (próxima etapa)
 
 **Próximos passos — Semana 6 (continuação):**
-- [ ] Score de risco por bairro (shapefile IBGE + Folium)
+- [x] Score de risco por bairro (shapefile IBGE + Folium)
+
+### 23/03/2026
+
+**O que foi feito:**
+- Análise e priorização das 7 lacunas do projeto com referencial teórico
+- Roadmap revisado — retreinamento dataset_features_v3 confirmado para Semana 7
+- Instalação: geopandas, folium, streamlit-folium, mapclassify
+- Download shapefile IBGE: 141 municípios MT + 143 bairros Cuiabá/VG (IBGE 2022)
+- Avaliação de 3 proxies para score de risco por bairro:
+  - Proxy 1 (ID_UNIDADE × CNES): escolhida — dados reais, referencial sólido
+  - Proxy 2 (NDBI + exposição territorial): agendada para Semana 7
+  - Proxy 3 (vulnerabilidade estrutural IBGE+OSM+GEE): v2.0
+- `ID_UNIDADE` adicionado ao Silver SINAN (100% preenchido em 18 anos)
+- Silver re-migrado e reenviado ao Hugging Face Hub
+- API CNES: 3.099 estabelecimentos extraídos (Cuiabá + VG) com paginação manual
+- Score de risco v1 calculado: 158 unidades × carga histórica SINAN 2007-2024
+- Mapa Folium gerado: `reports/mapa_risco_dengue.html`
+
+**Decisões técnicas:**
+- Proxy ID_UNIDADE escolhida — Bohm et al. (2023, Pathogens and Global Health)
+  usa áreas de abrangência dos centros de saúde como unidade espacial para dengue
+- Score v1 usa volume histórico absoluto — normalização por incidência (casos/pop)
+  agendada para próxima sessão [Lacuna 3]
+- PNAD Contínua descartada para modelo preditivo — granularidade insuficiente
+
+**Pendências identificadas:**
+- Score assimétrico — 146/158 unidades classificadas como "Muito Baixo"
+- Necessário normalizar por incidência por 100k hab (área de abrangência estimada)
+- Indicador "Baixa Confiança" [Lacuna 3] ainda não implementado
+
+**Próximos passos — Semana 6 (conclusão):**
+- [ ] Normalizar score por incidência (casos / pop estimada área abrangência)
+- [ ] Indicador "Baixa Confiança" para unidades com < 50 casos históricos
+- [ ] Merge dev → main
 
 ---
 

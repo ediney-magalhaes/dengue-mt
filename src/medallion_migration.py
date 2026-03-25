@@ -96,8 +96,8 @@ def silver_sinan():
             df = df.filter(pl.col('CLASSI_FIN').is_in(classi_validas))
 
         # Selecionar colunas essenciais disponíveis
-        colunas = ['DT_NOTIFIC', 'SG_UF_NOT', 'ID_MUNICIP',
-                   'CS_SEXO', 'NU_IDADE_N', 'HOSPITALIZ', 'EVOLUCAO']
+        colunas = ['DT_NOTIFIC', 'SG_UF_NOT', 'ID_MUNICIP', 'ID_UNIDADE',
+           'CS_SEXO', 'NU_IDADE_N', 'HOSPITALIZ', 'EVOLUCAO']
         df = df.select([c for c in colunas if c in df.columns])
 
         # Converter data — verificar tipo antes de agir

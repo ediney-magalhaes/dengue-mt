@@ -574,10 +574,10 @@
 - NDBI negativo na maioria dos meses — área predominantemente verde (Cuiabá + vegetação)
 
 **Próximos passos — Semana 8:**
-- [ ] Retreinar LightGBM v4 com dataset_features_v4 (67 features)
-- [ ] Drift monitoring com Evidently
-- [ ] FastAPI — endpoints de previsão
-- [ ] Deploy Streamlit Community Cloud
+- [x] Retreinar LightGBM v4 com dataset_features_v4 (67 features)
+- [x] Drift monitoring com Evidently
+- [x] FastAPI — endpoints de previsão
+- [x] Deploy Streamlit Community Cloud
 - [ ] Agendar Prefect na nuvem (Prefect Cloud free tier)
 
 ---
@@ -644,10 +644,20 @@
 - Pipeline: Prefect (local) → Prefect Cloud (Semana 9)
 
 **Próximos passos — Semana 9:**
+
+**Produto:**
 - [ ] Prefect Cloud — agendamento automático semanal na nuvem
+- [ ] CHANGELOG.md — rastrear versões do produto
+
+**Documentação acadêmica:**
+- [ ] Dicionário de dados — descrever cada feature (base para o artigo)
+- [ ] Decisões de modelagem — justificar escolhas técnicas com referências
+- [ ] Atualizar resumo expandido com resultados finais (v3 → v4, deploy, drift)
 - [ ] Relatório extensionista IFMT
-- [ ] Atualizar resumo expandido com resultados finais
-- [ ] Submissão SENIC 2026
+
+**Semana 10:**
+- [ ] Artigo completo SENIC 2026
+- [ ] Manual do usuário — para gestores de saúde usarem o dashboard
 
 ---
 ## 📅 Semana 9: Alertas automáticos + Relatório IFMT + SENIC 2026

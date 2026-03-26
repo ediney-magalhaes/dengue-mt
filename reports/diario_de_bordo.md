@@ -581,7 +581,6 @@
 - [ ] Agendar Prefect na nuvem (Prefect Cloud free tier)
 
 ---
-## 📅 Semana 8: Retreino modelo v4 + FastAPI + Deploy Streamlit
 
 ## 📅 Semana 8: Retreino v4 + FastAPI + Dashboard v2
 
@@ -613,10 +612,39 @@
 - sMAPE melhorou levemente (32.4% → 31.5%) — tendência positiva
 - Dashboard funcional como MVP para gestores de saúde pública
 
-**Próximos passos — Semana 9:**
-- [ ] Deploy Streamlit Community Cloud
+**Próximos passos — Semana 8:**
+- [x] Deploy Streamlit Community Cloud
 - [ ] Prefect Cloud — agendamento automático na nuvem
-- [ ] Evidently — drift monitoring com relatórios visuais
+- [x] Evidently — drift monitoring com relatórios visuais
+
+### 25/03/2026 (Semana 8 — conclusão)
+
+**O que foi feito:**
+- Deploy Streamlit Community Cloud — https://dengue-mt-ifmt.streamlit.app
+- Arquitetura 100% nuvem implementada — HF Hub como storage central
+- Modelo lgbm_v4_producao.pkl publicado no HF Hub
+- Dashboard v2 funcional na nuvem sem dependências locais
+- Evidently 0.7.x — relatório de drift gerado
+
+**Resultados Evidently:**
+- 13/13 features com drift detectado (100%)
+- Período: Referência 2018-2023 vs Atual 2023-2024
+- Teste: Wasserstein distance (normed)
+- Features críticas: oni_index, casos_lag_7d/14d/28d, temp_media, ndvi
+
+**Interpretação do drift:**
+- El Niño 2023-2024 excepcional — oni_index fora do padrão histórico
+- Surto histórico 2024 — lags de casos em novo patamar
+- Justifica Rolling Window LightGBM como escolha correta
+
+**Arquitetura final — 100% nuvem custo zero:**
+- Código: GitHub
+- Dados + Modelo: Hugging Face Hub
+- Dashboard: Streamlit Community Cloud
+- Pipeline: Prefect (local) → Prefect Cloud (Semana 9)
+
+**Próximos passos — Semana 9:**
+- [ ] Prefect Cloud — agendamento automático semanal na nuvem
 - [ ] Relatório extensionista IFMT
 - [ ] Atualizar resumo expandido com resultados finais
 - [ ] Submissão SENIC 2026

@@ -581,8 +581,45 @@
 - [ ] Agendar Prefect na nuvem (Prefect Cloud free tier)
 
 ---
-## 📅 Semana 8: Dagster + FastAPI + Deploy Streamlit
-> *A preencher*
+## 📅 Semana 8: Retreino modelo v4 + FastAPI + Deploy Streamlit
+
+## 📅 Semana 8: Retreino v4 + FastAPI + Dashboard v2
+
+### 25/03/2026 (continuação)
+
+**O que foi feito:**
+- LightGBM v4 retreinado com dataset_features_v4 (59 features)
+- FastAPI implementada — 4 endpoints: `/previsao`, `/score-risco`, `/historico`, `/saude`
+- Dashboard Streamlit v2 — conectado à FastAPI + mapa Folium integrado
+- 4 abas funcionais: Mapa de Risco, Série Temporal, Previsão, Sobre
+
+**Métricas LightGBM v4 (Folds 2-5):**
+
+| Métrica | Média | ±DP |
+|---|---|---|
+| MAE | 17.6 | ±5.3 casos/dia |
+| RMSE | 28.4 | ±9.3 casos/dia |
+| R² | 0.820 | ±0.052 |
+| sMAPE | 31.5% | ±4.9% |
+
+**Decisões técnicas:**
+- Google Trends e NDBI não melhoram R² histórico — valor em produção (nowcasting)
+- FastAPI como backend — desacopla modelo do dashboard, permite múltiplos clientes
+- Dashboard conectado via API — sidebar mostra métricas em tempo real
+- Mapa Folium integrado no Streamlit via `streamlit-folium`
+
+**Descobertas:**
+- v4 ≈ v3 ≈ v2 em R² — modelo robusto, novas features não degradam performance
+- sMAPE melhorou levemente (32.4% → 31.5%) — tendência positiva
+- Dashboard funcional como MVP para gestores de saúde pública
+
+**Próximos passos — Semana 9:**
+- [ ] Deploy Streamlit Community Cloud
+- [ ] Prefect Cloud — agendamento automático na nuvem
+- [ ] Evidently — drift monitoring com relatórios visuais
+- [ ] Relatório extensionista IFMT
+- [ ] Atualizar resumo expandido com resultados finais
+- [ ] Submissão SENIC 2026
 
 ---
 ## 📅 Semana 9: Alertas automáticos + Relatório IFMT + SENIC 2026

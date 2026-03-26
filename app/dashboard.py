@@ -1,8 +1,7 @@
 """
-dashboard.py
-------------
+dashboard.py — v2
 Dashboard interativo — Sistema Preditivo de Dengue MT
-Cuiabá e Várzea Grande / Mato Grosso
+Conectado à FastAPI + Mapa Folium
 
 Como rodar:
     streamlit run app/dashboard.py
@@ -13,8 +12,10 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
+import folium
+from streamlit_folium import st_folium
 from pathlib import Path
-import joblib
 from datetime import datetime, timedelta
 
 # ============================================================
@@ -27,348 +28,362 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS customizado
-st.markdown("""
-<style>
-    .metric-card {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px;
-        border-left: 4px solid #e63946;
-    }
-    .titulo-principal {
-        color: #e63946;
-        font-size: 2rem;
-        font-weight: bold;
-    }
-    .subtitulo {
-        color: #6c757d;
-        font-size: 1rem;
-    }
-</style>
-""", unsafe_allow_html=True)
+API_URL = "http://127.0.0.1:8000"
+
+# ============================================================
+# FUNÇÕES DE ACESSO À API
+# ============================================================
+@st.cache_data(ttl=300)
+def get_previsao(dias=14):
+    try:
+        r = requests.get(f"{API_URL}/previsao", params={"dias": dias}, timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except:
+        return None
+
+@st.cache_data(ttl=300)
+def get_score_risco():
+    try:
+        r = requests.get(f"{API_URL}/score-risco", timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except:
+        return None
+
+@st.cache_data(ttl=300)
+def get_saude():
+    try:
+        r = requests.get(f"{API_URL}/saude", timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except:
+        return None
+
+@st.cache_data(ttl=3600)
+def get_historico():
+    try:
+        r = requests.get(f"{API_URL}/historico", timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            df = pd.DataFrame(data['serie'])
+            df['data'] = pd.to_datetime(df['data'])
+            return df
+    except:
+        pass
+    # Fallback local
+    try:
+        df = pd.read_parquet('data/gold/dataset_features_v4.parquet')
+        df['data'] = pd.to_datetime(df['data'])
+        return df[['data', 'casos']].sort_values('data')
+    except:
+        return None
 
 # ============================================================
 # SIDEBAR
 # ============================================================
 with st.sidebar:
-    st.image("https://img.shields.io/badge/IFMT-Projeto%20Extensionista-red", 
-             use_container_width=True)
     st.markdown("## 🦟 Dengue MT")
     st.markdown("**Sistema Preditivo de Surtos**")
     st.markdown("---")
-    
-    st.markdown("### ⚙️ Configurações")
-    municipio = st.selectbox(
-        "Município",
-        ["Cuiabá + Várzea Grande (MT)", "Cuiabá", "Várzea Grande"]
-    )
-    
+
     horizonte = st.slider(
         "Horizonte de previsão (dias)",
         min_value=7, max_value=28, value=14, step=7
     )
-    
+
     st.markdown("---")
-    st.markdown("### 📊 Modelo ativo")
-    st.success("Rolling Window LightGBM")
-    st.metric("R²", "0.892")
-    st.metric("MAE", "17.69 casos/dia")
-    
+    st.markdown("### 📊 Status do Modelo")
+    saude = get_saude()
+    if saude:
+        st.success(f"✅ {saude['modelo']}")
+        metricas = saude.get('metricas', {})
+        st.metric("R²", f"{metricas.get('R2', 'N/A')}")
+        st.metric("MAE", f"{metricas.get('MAE', 'N/A')} casos/dia")
+        st.metric("sMAPE", f"{metricas.get('sMAPE', 'N/A')}%")
+    else:
+        st.error("❌ API indisponível")
+
     st.markdown("---")
-    st.markdown("### 📅 Última atualização")
-    st.info(f"{datetime.now().strftime('%d/%m/%Y %H:%M')}")
-    
-    st.markdown("---")
+    st.caption(f"Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     st.caption("IFMT — Projeto Extensionista 2026")
     st.caption("Ediney Magalhães")
 
 # ============================================================
-# CARREGAR DADOS
-# ============================================================
-@st.cache_data
-def carregar_dados():
-    df = pd.read_parquet('data/processed/dataset_features_v2.parquet')
-    df['data'] = pd.to_datetime(df['data'])
-    return df.sort_values('data').reset_index(drop=True)
-
-df = carregar_dados()
-
-# ============================================================
 # CABEÇALHO
 # ============================================================
-st.markdown('<p class="titulo-principal">🦟 Sistema Preditivo de Dengue — MT</p>', 
-            unsafe_allow_html=True)
-st.markdown('<p class="subtitulo">Cuiabá e Várzea Grande | Instituto Federal de Mato Grosso (IFMT)</p>', 
-            unsafe_allow_html=True)
+st.markdown("# 🦟 Sistema Preditivo de Dengue — MT")
+st.markdown("**Cuiabá e Várzea Grande | Instituto Federal de Mato Grosso (IFMT)**")
 st.markdown("---")
 
 # ============================================================
 # MÉTRICAS PRINCIPAIS
 # ============================================================
-col1, col2, col3, col4 = st.columns(4)
+df_hist = get_historico()
 
-ultimo_ano = df[df['ano'] == df['ano'].max()]
-casos_hoje = int(df['casos'].iloc[-1])
-media_7d = int(df['casos'].tail(7).mean())
-total_ano = int(ultimo_ano['casos'].sum())
-pico_ano = int(ultimo_ano['casos'].max())
+if df_hist is not None:
+    casos_ultimo = int(df_hist['casos'].iloc[-1])
+    media_7d = int(df_hist['casos'].tail(7).mean())
+    total_2024 = int(df_hist[df_hist['data'].dt.year == 2024]['casos'].sum())
+    pico_2024 = int(df_hist[df_hist['data'].dt.year == 2024]['casos'].max())
 
-with col1:
-    st.metric(
-        "📅 Último registro",
-        f"{casos_hoje} casos",
-        delta=f"{casos_hoje - media_7d:+.0f} vs média 7d"
-    )
-
-with col2:
-    st.metric(
-        "📊 Média últimos 7 dias",
-        f"{media_7d} casos/dia"
-    )
-
-with col3:
-    st.metric(
-        "📈 Total 2024",
-        f"{total_ano:,} casos"
-    )
-
-with col4:
-    st.metric(
-        "⚠️ Pico 2024",
-        f"{pico_ano} casos/dia"
-    )
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📅 Último registro",
+                  f"{casos_ultimo} casos",
+                  delta=f"{casos_ultimo - media_7d:+.0f} vs média 7d")
+    with col2:
+        st.metric("📊 Média 7 dias", f"{media_7d} casos/dia")
+    with col3:
+        st.metric("📈 Total 2024", f"{total_2024:,} casos")
+    with col4:
+        st.metric("⚠️ Pico 2024", f"{pico_2024} casos/dia")
 
 st.markdown("---")
 
 # ============================================================
-# ABAS PRINCIPAIS
+# ABAS
 # ============================================================
 aba1, aba2, aba3, aba4 = st.tabs([
-    "📈 Série Temporal", 
-    "🌡️ Clima & Dengue", 
+    "🗺️ Mapa de Risco",
+    "📈 Série Temporal",
     "🤖 Previsão",
-    "ℹ️ Sobre o Modelo"
+    "ℹ️ Sobre"
 ])
 
-# ABA 1 — SÉRIE TEMPORAL
+# ============================================================
+# ABA 1 — MAPA DE RISCO (carro-chefe!)
+# ============================================================
 with aba1:
-    st.subheader("Evolução dos Casos Confirmados de Dengue — MT (2018–2024)")
-    
-    # Filtro de período
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        ano_inicio = st.selectbox("Ano início", options=sorted(df['ano'].unique()), index=0)
-    with col_f2:
-        ano_fim = st.selectbox("Ano fim", options=sorted(df['ano'].unique()), index=len(df['ano'].unique())-1)
-    
-    df_filtrado = df[(df['ano'] >= ano_inicio) & (df['ano'] <= ano_fim)]
-    
-    # Agregação semanal para suavizar
-    df_semanal = df_filtrado.set_index('data')['casos'].resample('W').sum().reset_index()
-    
-    fig1 = px.area(df_semanal, x='data', y='casos',
-                   title=f"Casos semanais — {ano_inicio} a {ano_fim}",
-                   labels={'casos': 'Casos/semana', 'data': 'Data'},
-                   color_discrete_sequence=['#e63946'])
-    fig1.update_layout(showlegend=False, height=400)
-    st.plotly_chart(fig1, use_container_width=True)
-    
-    # Heatmap sazonal
-    st.subheader("Sazonalidade — Casos por Mês/Ano")
-    pivot = df.groupby(['ano', 'mes'])['casos'].sum().unstack()
-    pivot.columns = ['Jan','Fev','Mar','Abr','Mai','Jun',
-                     'Jul','Ago','Set','Out','Nov','Dez']
-    
-    fig2 = px.imshow(pivot, 
-                     color_continuous_scale='YlOrRd',
-                     title="Heatmap de Sazonalidade",
-                     labels={'x': 'Mês', 'y': 'Ano', 'color': 'Casos'})
-    fig2.update_layout(height=350)
-    st.plotly_chart(fig2, use_container_width=True)
+    st.subheader("🗺️ Mapa de Risco por Unidade de Saúde")
+    st.caption("Score baseado na carga histórica SINAN 2007-2024 × CNES | Percentil rank")
 
-# ABA 2 — CLIMA & DENGUE
+    score_data = get_score_risco()
+
+    if score_data:
+        df_score = pd.DataFrame(score_data['unidades'])
+
+        # Métricas do mapa
+        dist = score_data['distribuicao']
+        c1, c2, c3, c4, c5 = st.columns(5)
+        c1.metric("🔴 Muito Alto", dist.get('Muito Alto', 0))
+        c2.metric("🟠 Alto", dist.get('Alto', 0))
+        c3.metric("🟡 Moderado", dist.get('Moderado', 0))
+        c4.metric("🔵 Baixo", dist.get('Baixo', 0))
+        c5.metric("⚫ Muito Baixo", dist.get('Muito Baixo', 0))
+
+        st.markdown("---")
+
+        # Construir mapa Folium
+        mapa = folium.Map(
+            location=[-15.62, -56.09],
+            zoom_start=12,
+            tiles='CartoDB positron'
+        )
+
+        cores = {
+            'Muito Alto':  '#d73027',
+            'Alto':        '#fc8d59',
+            'Moderado':    '#fee090',
+            'Baixo':       '#91bfdb',
+            'Muito Baixo': '#4575b4'
+        }
+
+        for _, row in df_score.iterrows():
+            lat = row.get('latitude_estabelecimento_decimo_grau')
+            lon = row.get('longitude_estabelecimento_decimo_grau')
+            if pd.isna(lat) or pd.isna(lon):
+                continue
+
+            cor = cores.get(row.get('risco_v2', 'Muito Baixo'), '#4575b4')
+            baixa = row.get('baixa_confianca', False)
+
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=5 + row.get('score_v2', 0) * 15,
+                color='gray' if baixa else cor,
+                fill=True,
+                fill_color=cor,
+                fill_opacity=0.4 if baixa else 0.85,
+                popup=folium.Popup(
+                    f"<b>{row.get('nome_fantasia','N/A')}</b><br>"
+                    f"Bairro: {row.get('bairro_estabelecimento','N/A')}<br>"
+                    f"Casos históricos: {row.get('casos_historicos',0):,}<br>"
+                    f"Score: {row.get('score_v2',0):.2f}<br>"
+                    f"Risco: <b>{row.get('risco_v2','N/A')}</b><br>"
+                    f"{'⚠️ Baixa Confiança' if baixa else '✅ Alta Confiança'}",
+                    max_width=260
+                ),
+                tooltip=f"{row.get('nome_fantasia','N/A')} — {row.get('risco_v2','N/A')}"
+            ).add_to(mapa)
+
+        # Legenda
+        legenda = """
+        <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
+             background-color: white; padding: 12px; border-radius: 8px;
+             border: 2px solid #ccc; font-size: 12px; line-height: 1.8;">
+        <b>🦟 Score de Risco — Dengue MT</b><br>
+        🔴 Muito Alto (top 20%)<br>
+        🟠 Alto (60–80%)<br>
+        🟡 Moderado (40–60%)<br>
+        🔵 Baixo (20–40%)<br>
+        ⚫ Muito Baixo (bottom 20%)<br>
+        <b>Borda cinza = Baixa Confiança</b>
+        </div>
+        """
+        mapa.get_root().html.add_child(folium.Element(legenda))
+
+        st_folium(mapa, width=None, height=550, returned_objects=[])
+
+    else:
+        st.error("❌ API indisponível — verifique se a FastAPI está rodando na porta 8000")
+
+# ============================================================
+# ABA 2 — SÉRIE TEMPORAL
+# ============================================================
 with aba2:
-    st.subheader("Relação entre Variáveis Climáticas e Casos de Dengue")
-    
-    variavel = st.selectbox(
-        "Variável climática",
-        options={
-            'precipitacao_total': 'Precipitação (mm)',
-            'umidade_media': 'Umidade Relativa (%)',
-            'temp_media': 'Temperatura Média (°C)',
-            'radiacao_mj': 'Radiação Solar (MJ/m²)',
-            'ndvi': 'NDVI (Vegetação)',
-            'oni_index': 'ONI Index (El Niño/La Niña)'
-        }.keys(),
-        format_func=lambda x: {
-            'precipitacao_total': 'Precipitação (mm)',
-            'umidade_media': 'Umidade Relativa (%)',
-            'temp_media': 'Temperatura Média (°C)',
-            'radiacao_mj': 'Radiação Solar (MJ/m²)',
-            'ndvi': 'NDVI (Vegetação)',
-            'oni_index': 'ONI Index (El Niño/La Niña)'
-        }[x]
-    )
-    
-    df_mensal = df.set_index('data').resample('ME').agg(
-        casos=('casos', 'sum'),
-        clima=(variavel, 'mean')
-    ).reset_index()
-    
-    fig3 = go.Figure()
-    fig3.add_trace(go.Scatter(
-        x=df_mensal['data'], y=df_mensal['casos'],
-        name='Casos', line=dict(color='#e63946', width=2),
-        yaxis='y'
-    ))
-    fig3.add_trace(go.Scatter(
-        x=df_mensal['data'], y=df_mensal['clima'],
-        name=variavel, line=dict(color='#457b9d', width=2),
-        yaxis='y2'
-    ))
-    fig3.update_layout(
-        title=f"Casos de Dengue vs {variavel}",
-        yaxis=dict(title='Casos/mês', side='left'),
-        yaxis2=dict(title=variavel, side='right', overlaying='y'),
-        height=450, hovermode='x unified'
-    )
-    st.plotly_chart(fig3, use_container_width=True)
-    
-    # Correlação com lag
-    st.subheader("Efeito de Lag — Correlação com Defasagem Temporal")
-    df_semanal2 = df.set_index('data').resample('W').agg(
-        casos=('casos','sum'),
-        clima=(variavel,'mean')
-    ).reset_index()
-    
-    lags = range(0, 9)
-    corrs = [df_semanal2['casos'].corr(df_semanal2['clima'].shift(lag)) for lag in lags]
-    
-    fig4 = px.line(x=list(lags), y=corrs, markers=True,
-                   title=f"Correlação {variavel} × Casos por defasagem (semanas)",
-                   labels={'x': 'Lag (semanas)', 'y': 'Correlação de Pearson (r)'})
-    fig4.add_hline(y=0, line_dash='dash', line_color='gray')
-    fig4.update_layout(height=350)
-    st.plotly_chart(fig4, use_container_width=True)
+    st.subheader("Evolução dos Casos Confirmados — MT (2018–2024)")
 
+    if df_hist is not None:
+        df_hist['ano'] = df_hist['data'].dt.year
+        anos = sorted(df_hist['ano'].unique())
+
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            ano_ini = st.selectbox("Ano início", anos, index=0)
+        with col_f2:
+            ano_fim = st.selectbox("Ano fim", anos, index=len(anos)-1)
+
+        df_fil = df_hist[(df_hist['ano'] >= ano_ini) & (df_hist['ano'] <= ano_fim)]
+        df_sem = df_fil.set_index('data')['casos'].resample('W').sum().reset_index()
+
+        fig1 = px.area(df_sem, x='data', y='casos',
+                       title=f"Casos semanais — {ano_ini} a {ano_fim}",
+                       color_discrete_sequence=['#e63946'])
+        fig1.update_layout(height=400)
+        st.plotly_chart(fig1, use_container_width=True)
+
+        # Heatmap sazonal
+        df_hist['mes'] = df_hist['data'].dt.month
+        pivot = df_hist.groupby(['ano','mes'])['casos'].sum().unstack()
+        pivot.columns = ['Jan','Fev','Mar','Abr','Mai','Jun',
+                         'Jul','Ago','Set','Out','Nov','Dez']
+        fig2 = px.imshow(pivot, color_continuous_scale='YlOrRd',
+                         title="Sazonalidade — Casos por Mês/Ano")
+        fig2.update_layout(height=350)
+        st.plotly_chart(fig2, use_container_width=True)
+
+# ============================================================
 # ABA 3 — PREVISÃO
+# ============================================================
 with aba3:
     st.subheader("🤖 Previsão de Casos — Próximos dias")
-    
-    st.info(f"""
-    **Modelo:** Rolling Window LightGBM  
-    **Horizonte:** {horizonte} dias  
-    **Última data dos dados:** {df['data'].max().strftime('%d/%m/%Y')}  
-    **R² = 0.892 | MAE = 17.69 casos/dia**
-    """)
-    
-    # Simular previsão com base nos últimos dados
-    ultimos = df.tail(30)
-    media_recente = ultimos['casos'].mean()
-    std_recente = ultimos['casos'].std()
-    tendencia = ultimos['casos'].diff().mean()
-    
-    datas_futuras = pd.date_range(
-        start=df['data'].max() + timedelta(days=1),
-        periods=horizonte
-    )
-    
-    np.random.seed(42)
-    previsoes = []
-    valor_atual = media_recente
-    for i in range(horizonte):
-        valor_atual = max(0, valor_atual + tendencia * 0.3 + 
-                         np.random.normal(0, std_recente * 0.2))
-        previsoes.append(valor_atual)
-    
-    df_prev = pd.DataFrame({
-        'data': datas_futuras,
-        'previsao': previsoes,
-        'ic_lower': [max(0, p - std_recente * 0.5) for p in previsoes],
-        'ic_upper': [p + std_recente * 0.5 for p in previsoes]
-    })
-    
-    # Gráfico com histórico + previsão
-    df_hist = df.tail(60)[['data','casos']].copy()
-    
-    fig5 = go.Figure()
-    fig5.add_trace(go.Scatter(
-        x=df_hist['data'], y=df_hist['casos'],
-        name='Histórico', line=dict(color='#e63946', width=2)
-    ))
-    fig5.add_trace(go.Scatter(
-        x=df_prev['data'], y=df_prev['previsao'],
-        name='Previsão', line=dict(color='#2a9d8f', width=2, dash='dash')
-    ))
-    fig5.add_trace(go.Scatter(
-        x=pd.concat([df_prev['data'], df_prev['data'][::-1]]),
-        y=pd.concat([df_prev['ic_upper'], df_prev['ic_lower'][::-1]]),
-        fill='toself', fillcolor='rgba(42,157,143,0.15)',
-        line=dict(color='rgba(255,255,255,0)'),
-        name='Intervalo de confiança'
-    ))
-    fig5.add_trace(go.Scatter(
-    x=[df['data'].max(), df['data'].max()],
-    y=[0, df['casos'].max()],
-    mode='lines',
-    line=dict(color='gray', dash='dot', width=1),
-    name='Hoje',
-    showlegend=True
-))
-    fig5.update_layout(
-        title=f"Previsão para os próximos {horizonte} dias",
-        yaxis_title='Casos/dia', height=450, hovermode='x unified'
-    )
-    st.plotly_chart(fig5, use_container_width=True)
-    
-    # Nível de alerta
-    media_prev = np.mean(previsoes)
-    if media_prev > 150:
-        st.error(f"🚨 **ALERTA ALTO** — Previsão média: {media_prev:.0f} casos/dia")
-    elif media_prev > 50:
-        st.warning(f"⚠️ **ALERTA MODERADO** — Previsão média: {media_prev:.0f} casos/dia")
-    else:
-        st.success(f"✅ **NÍVEL BAIXO** — Previsão média: {media_prev:.0f} casos/dia")
 
-# ABA 4 — SOBRE O MODELO
+    prev_data = get_previsao(horizonte)
+
+    if prev_data and df_hist is not None:
+        df_prev = pd.DataFrame(prev_data['previsoes'])
+        df_prev['data'] = pd.to_datetime(df_prev['data'])
+
+        st.info(f"""
+        **Modelo:** {prev_data['modelo']} | 
+        **Última data conhecida:** {prev_data['ultima_data_conhecida']} | 
+        **Horizonte:** {horizonte} dias
+        """)
+
+        # Gráfico histórico + previsão
+        df_h60 = df_hist.tail(60)
+
+        fig3 = go.Figure()
+        fig3.add_trace(go.Scatter(
+            x=df_h60['data'], y=df_h60['casos'],
+            name='Histórico', line=dict(color='#e63946', width=2)
+        ))
+        fig3.add_trace(go.Scatter(
+            x=df_prev['data'], y=df_prev['casos_previstos'],
+            name='Previsão', line=dict(color='#2a9d8f', width=2, dash='dash'),
+            mode='lines+markers'
+        ))
+        fig3.add_shape(
+            type='line',
+            x0=prev_data['ultima_data_conhecida'],
+            x1=prev_data['ultima_data_conhecida'],
+            y0=0, y1=1,
+            yref='paper',
+            line=dict(color='gray', dash='dot', width=1)
+        )
+        fig3.add_annotation(
+            x=prev_data['ultima_data_conhecida'],
+            y=1, yref='paper',
+            text='Hoje', showarrow=False,
+            font=dict(color='gray')
+        )
+        fig3.update_layout(
+            title=f"Previsão — próximos {horizonte} dias",
+            yaxis_title='Casos/dia', height=420,
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig3, use_container_width=True)
+
+        # Tabela de previsões + alertas
+        st.subheader("📋 Previsões detalhadas")
+        cores_alerta = {
+            'Muito Alto': '🔴',
+            'Alto': '🟠',
+            'Moderado': '🟡',
+            'Baixo': '🔵',
+            'Muito Baixo': '⚫'
+        }
+        df_prev['alerta'] = df_prev['nivel_risco'].map(cores_alerta)
+        st.dataframe(
+            df_prev[['data', 'casos_previstos', 'nivel_risco', 'alerta']],
+            use_container_width=True, hide_index=True
+        )
+
+        media_prev = df_prev['casos_previstos'].mean()
+        if media_prev > 150:
+            st.error(f"🚨 **ALERTA ALTO** — Média prevista: {media_prev:.0f} casos/dia")
+        elif media_prev > 50:
+            st.warning(f"⚠️ **ALERTA MODERADO** — Média prevista: {media_prev:.0f} casos/dia")
+        else:
+            st.success(f"✅ **NÍVEL BAIXO** — Média prevista: {media_prev:.0f} casos/dia")
+    else:
+        st.error("❌ API indisponível")
+
+# ============================================================
+# ABA 4 — SOBRE
+# ============================================================
 with aba4:
-    st.subheader("ℹ️ Sobre o Sistema Preditivo")
-    
+    st.subheader("ℹ️ Sobre o Sistema")
+
     col_a, col_b = st.columns(2)
-    
     with col_a:
         st.markdown("""
         ### 🎯 Objetivo
-        Antecipar surtos de dengue em Cuiabá e Várzea Grande/MT 
-        com **2 a 4 semanas de antecedência**, usando dados públicos 
-        e aprendizado de máquina.
-        
+        Antecipar surtos de dengue em Cuiabá e Várzea Grande/MT
+        com **2 a 4 semanas de antecedência**.
+
         ### 📊 Fontes de dados
-        - **SINAN/DATASUS** — 166.525 casos (2018–2024)
-        - **INMET A901** — 2.557 dias de dados climáticos
-        - **NASA POWER** — Radiação solar diária
-        - **GEE Sentinel-2 + MODIS** — NDVI e NDWI mensais
-        - **NOAA** — ONI Index (El Niño/La Niña)
+        - **SINAN/DATASUS** — 390k registros (2007–2024)
+        - **INMET A901** — clima diário Cuiabá
+        - **NASA POWER** — radiação solar
+        - **GEE Sentinel-2/MODIS** — NDVI, NDWI, NDBI
+        - **NOAA** — ONI Index (ENSO)
+        - **Google Trends** — Infoveillance (r=0.922)
         """)
-    
     with col_b:
         st.markdown("""
-        ### 🤖 Modelos testados
-        | Modelo | R² |
-        |---|---|
-        | Rolling Window LightGBM | **0.892** 🏆 |
-        | Ensemble LightGBM+CNN/BiLSTM | 0.873 |
-        | LightGBM otimizado | 0.871 |
-        | CNN + BiLSTM | 0.756 |
-        | LSTM v2 | 0.664 |
-        
+        ### 🤖 Evolução dos modelos
+
+        | Modelo | R² | sMAPE |
+        |---|---|---|
+        | LightGBM v2 | 0.830 | N/A |
+        | LightGBM v3 | 0.829 | 32.4% |
+        | LightGBM v4 | 0.820 | 31.5% |
+
         ### 🏛️ Instituição
-        Instituto Federal de Mato Grosso (IFMT)  
-        Projeto Extensionista — 2026  
+        Instituto Federal de Mato Grosso (IFMT)
+        Projeto Extensionista — 2026
         **Ediney Magalhães**
         """)
-    
+
     st.markdown("---")
     st.markdown("""
     ### ⚖️ Ética e Conformidade

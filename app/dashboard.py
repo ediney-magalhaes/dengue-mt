@@ -57,10 +57,27 @@ def get_saude():
     except:
         return None
 
+HF_DATASET = "edyestatistica/dengue-mt-medallion"
+
+@st.cache_data(ttl=3600)
+def carregar_do_hf(arquivo):
+    """Carrega parquet do Hugging Face Hub."""
+    try:
+        from huggingface_hub import hf_hub_download
+        path = hf_hub_download(
+            repo_id=HF_DATASET,
+            filename=arquivo,
+            repo_type="dataset"
+        )
+        return pd.read_parquet(path)
+    except Exception as e:
+        st.warning(f"HF Hub indisponível: {e}")
+        return None
+
 @st.cache_data(ttl=3600)
 def get_historico():
     try:
-        r = requests.get(f"{API_URL}/historico", timeout=10)
+        r = requests.get(f"{API_URL}/historico", timeout=5)
         if r.status_code == 200:
             data = r.json()
             df = pd.DataFrame(data['serie'])
@@ -68,6 +85,11 @@ def get_historico():
             return df
     except:
         pass
+    # Fallback HF Hub
+    df = carregar_do_hf('gold/dataset_features_v4.parquet')
+    if df is not None:
+        df['data'] = pd.to_datetime(df['data'])
+        return df[['data', 'casos']].sort_values('data')
     # Fallback local
     try:
         df = pd.read_parquet('data/gold/dataset_features_v4.parquet')
@@ -75,6 +97,26 @@ def get_historico():
         return df[['data', 'casos']].sort_values('data')
     except:
         return None
+
+@st.cache_data(ttl=3600)  
+def get_score_risco_hf():
+    """Carrega score de risco do HF Hub como fallback."""
+    try:
+        r = requests.get(f"{API_URL}/score-risco", timeout=5)
+        if r.status_code == 200:
+                return r.json()
+    except:
+        pass
+    # Fallback HF Hub
+    df = carregar_do_hf('external/score_risco_v2.parquet')
+    if df is not None:
+        return {
+        'total_unidades': len(df),
+        'gerado_em': datetime.now().isoformat(),
+        'distribuicao': df['risco_v2'].value_counts().to_dict(),
+        'unidades': df.to_dict(orient='records')
+        }
+    return None
 
 # ============================================================
 # SIDEBAR
@@ -155,7 +197,7 @@ with aba1:
     st.subheader("🗺️ Mapa de Risco por Unidade de Saúde")
     st.caption("Score baseado na carga histórica SINAN 2007-2024 × CNES | Percentil rank")
 
-    score_data = get_score_risco()
+    score_data = get_score_risco_hf()
 
     if score_data:
         df_score = pd.DataFrame(score_data['unidades'])

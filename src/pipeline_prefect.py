@@ -1,7 +1,6 @@
 # ============================================================
 # Dengue MT — Pipeline de Ingestão e Retreino Automático
-# Orquestrador: Prefect 3.x
-# Autor: Ediney Magalhães — IFMT 2026
+# Orquestrador: Prefect
 # ============================================================
 
 from prefect import flow, task, get_run_logger
@@ -17,10 +16,14 @@ import smtplib
 from email.mime.text import MIMEText
 
 # ============================================================
-# CONFIGURAÇÕES
+# CONFIGURAÇÕES E IDENTIDADE DO PIPELINE
 # ============================================================
-DATA_DIR = Path(__file__).parent.parent / 'data'
-MODELS_DIR = Path(__file__).parent.parent / 'models'
+PIPELINE_VERSION = "1.0.1-dev"
+DATASET_VERSION  = "v4"
+MODEL_VERSION    = "lgbm_v4"
+
+DATA_DIR    = Path(__file__).parent.parent / 'data'
+MODELS_DIR  = Path(__file__).parent.parent / 'models'
 REPORTS_DIR = Path(__file__).parent.parent / 'reports'
 
 MAE_LIMIAR = 25.0        # Retreinar se MAE > 25 casos/dia
@@ -425,7 +428,10 @@ def enviar_alerta_email(assunto: str, mensagem: str):
 def pipeline_semanal():
     """Flow principal — executa toda semana automaticamente."""
     logger = get_run_logger()
-    logger.info("Iniciando Pipeline Semanal — Dengue MT")
+    logger.info(f"Iniciando Pipeline Semanal — Dengue MT")
+    logger.info(f"Pipeline version: {PIPELINE_VERSION}")
+    logger.info(f"Dataset version:  {DATASET_VERSION}")
+    logger.info(f"Model version:    {MODEL_VERSION}")
     logger.info(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     
     # 1. Ingestão de dados
@@ -480,6 +486,10 @@ def pipeline_semanal():
 
     # Resumo final
     resumo = {
+        'pipeline_version': PIPELINE_VERSION,
+        'dataset_version':  DATASET_VERSION,
+        'model_version':    MODEL_VERSION,
+        'timestamp': datetime.now().isoformat(),
         'timestamp': datetime.now().isoformat(),
         'inmet': resultado_inmet['status'],
         'nasa_power': resultado_nasa['status'],

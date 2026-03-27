@@ -12,6 +12,7 @@ import numpy as np
 import requests
 import joblib
 import json
+import os
 import smtplib
 from email.mime.text import MIMEText
 
@@ -358,6 +359,9 @@ def retreinar_modelo():
             schema = {
                 'feature_names': novo_modelo.feature_name_,
                 'n_features': len(novo_modelo.feature_name_),
+                'pipeline_version': PIPELINE_VERSION,
+                'commit_sha': os.environ.get('GITHUB_SHA', 'local')[:8],
+                'dataset_version': DATASET_VERSION,
                 'drop_cols': drop_cols,
                 'data_treino': str(df_train['data'].max().date()),
                 'n_registros_treino': len(df_train),
@@ -433,6 +437,8 @@ def pipeline_semanal():
     logger.info(f"Dataset version:  {DATASET_VERSION}")
     logger.info(f"Model version:    {MODEL_VERSION}")
     logger.info(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    logger.info(f"Commit SHA:       {os.environ.get('GITHUB_SHA', 'local')[:8]}")
+    logger.info(f"Ambiente:         {os.environ.get('GITHUB_ACTIONS', 'local')}")
     
     # 1. Ingestão de dados
     resultado_inmet   = ingerir_inmet()
@@ -485,21 +491,26 @@ def pipeline_semanal():
         )
 
     # Resumo final
+    # Capturar commit SHA do ambiente (CI injeta automaticamente)
+    commit_sha = os.environ.get('GITHUB_SHA', 'local')[:8]
+    run_env    = os.environ.get('GITHUB_ACTIONS', 'local')
+
     resumo = {
         'pipeline_version': PIPELINE_VERSION,
         'dataset_version':  DATASET_VERSION,
         'model_version':    MODEL_VERSION,
-        'timestamp': datetime.now().isoformat(),
-        'timestamp': datetime.now().isoformat(),
-        'inmet': resultado_inmet['status'],
+        'commit_sha':       commit_sha,
+        'run_env':          run_env,
+        'timestamp':        datetime.now().isoformat(),
+        'inmet':    resultado_inmet['status'],
         'nasa_power': resultado_nasa['status'],
-        'oni': resultado_oni['status'],
-        'trends': resultado_trends['status'],
+        'oni':      resultado_oni['status'],
+        'trends':   resultado_trends['status'],
         'contratos': contratos['status'],
         'drift_mae': drift.get('mae_recente'),
-        'drift_r2': drift.get('r2_recente'),
+        'drift_r2':  drift.get('r2_recente'),
         'retreinar': drift.get('retreinar', False),
-        'retreino': resultado_retreino['status']
+        'retreino':  resultado_retreino['status']
     }
 
     logger.info(f"Pipeline concluído: {resumo}")

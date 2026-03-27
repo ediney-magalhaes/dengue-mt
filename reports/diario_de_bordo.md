@@ -646,7 +646,7 @@
 **Próximos passos — Semana 9:**
 
 **Produto:**
-- [ ] Prefect Cloud — agendamento automático semanal na nuvem
+- [x] Prefect Cloud — agendamento automático semanal na nuvem
 - [ ] CHANGELOG.md — rastrear versões do produto
 
 **Documentação acadêmica:**
@@ -660,8 +660,43 @@
 - [ ] Manual do usuário — para gestores de saúde usarem o dashboard
 
 ---
-## 📅 Semana 9: Alertas automáticos + Relatório IFMT + SENIC 2026
-> *A preencher*
+
+## 📅 Semana 9: MLOps Pipeline + CI/CD + Automação
+
+### 26/03/2026
+
+**O que foi feito:**
+- pytest + Pandera — 13 testes automatizados (dados + modelo + nowcasting)
+- GitHub Actions CI — roda a cada push em dev/main
+- Schedule semanal — domingo 06h Cuiabá (09h UTC) automático
+- Job de retreino automático no CI — testes → retreino → HF Hub
+- Feature Schema Contract — `lgbm_v4_feature_schema.json`
+- Pipeline Prefect atualizado com retreino real do modelo
+- Lógica de promoção/rollback — novo modelo só promovido se R² não cair > 5%
+- HF_TOKEN configurado como GitHub Secret
+
+**Arquitetura MLOps implementada:**
+```
+Todo domingo 06h (automático — GitHub Actions):
+  ├── pytest 13 testes — valida dados e modelo
+  ├── Pandera — contratos de dados
+  ├── Prefect — ingestão + drift + retreino
+  ├── Feature Schema — garante compatibilidade de features
+  ├── Promoção condicional — rollback automático se performance cair
+  └── Upload HF Hub — dashboard atualiza automaticamente
+```
+
+**Decisões técnicas:**
+- Feature Schema salvo em JSON — contrato formal entre dataset e modelo
+- Promoção condicional: R² novo >= R² atual - 0.05
+- GitHub Actions schedule substitui Prefect Cloud (custo zero)
+- alertas.jsonl como fallback de notificações
+
+**Próximos passos — Semana 9 (continuação):**
+- [ ] MLflow — versionamento formal de experimentos
+- [ ] CHANGELOG.md
+- [ ] Dicionário de dados
+- [ ] Relatório extensionista IFMT
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

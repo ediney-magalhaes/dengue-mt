@@ -514,6 +514,38 @@ def pipeline_semanal():
     }
 
     logger.info(f"Pipeline concluído: {resumo}")
+
+    # Salvar metadata da execução
+    from pathlib import Path
+    metadata_dir = Path(__file__).parent.parent / 'metadata'
+    metadata_dir.mkdir(exist_ok=True)
+    
+    run_metadata = {
+        'pipeline_version': PIPELINE_VERSION,
+        'dataset_version':  DATASET_VERSION,
+        'model_version':    MODEL_VERSION,
+        'commit_sha':       commit_sha,
+        'run_env':          run_env,
+        'timestamp':        datetime.now().isoformat(),
+        'resultados': {
+            'inmet':      resultado_inmet['status'],
+            'nasa_power': resultado_nasa['status'],
+            'oni':        resultado_oni['status'],
+            'trends':     resultado_trends['status'],
+            'contratos':  contratos['status'],
+            'drift_mae':  drift.get('mae_recente'),
+            'drift_r2':   drift.get('r2_recente'),
+            'retreinou':  drift.get('retreinar', False),
+            'retreino':   resultado_retreino['status']
+        }
+    }
+    
+    # Salvar run_metadata.json (sobrescreve — guarda apenas o último run)
+    with open(metadata_dir / 'run_metadata.json', 'w', encoding='utf-8') as f:
+        json.dump(run_metadata, f, ensure_ascii=False, indent=2)
+    
+    logger.info(f"Metadata salvo em metadata/run_metadata.json")
+
     return resumo
 
 

@@ -10,6 +10,9 @@ on:
     branches: [dev, main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 9 * * 0' 
+  workflow_dispatch:
 
 jobs:
   testes:

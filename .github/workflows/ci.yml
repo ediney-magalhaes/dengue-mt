@@ -83,3 +83,98 @@ jobs:
           echo "Testes falharam! Verifique os logs acima."
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
+
+  retreino:
+    name: Retreino + Deploy HF Hub
+    runs-on: ubuntu-latest
+    needs: testes          # só roda se testes passarem
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências ML
+        run: |
+          pip install --upgrade pip
+          pip install pandas numpy scikit-learn lightgbm joblib pyarrow \
+                      huggingface_hub prefect requests pytrends evidently
+
+      - name: Baixar dados e modelo do HF Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          import shutil
+          from huggingface_hub import hf_hub_download
+          import os
+          from pathlib import Path
+
+          token = os.environ.get('HF_TOKEN')
+          Path('data/gold').mkdir(parents=True, exist_ok=True)
+          Path('data/external').mkdir(parents=True, exist_ok=True)
+          Path('models').mkdir(parents=True, exist_ok=True)
+
+          files = [
+              ('gold/dataset_features_v4.parquet', 'data/gold/dataset_features_v4.parquet'),
+              ('external/nowcasting_fatores.parquet', 'data/external/nowcasting_fatores.parquet'),
+              ('models/lgbm_v4_producao.pkl', 'models/lgbm_v4_producao.pkl'),
+          ]
+          for repo_path, local_path in files:
+              path = hf_hub_download(
+                  repo_id='edyestatistica/dengue-mt-medallion',
+                  filename=repo_path, repo_type='dataset', token=token,
+              )
+              shutil.copy(path, local_path)
+              print(f'{repo_path} baixado')
+          "
+
+      - name: Executar pipeline Prefect (ingestão + drift + retreino)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python src/pipeline_prefect.py
+
+      - name: Upload modelo atualizado para HF Hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from huggingface_hub import HfApi
+          import os
+          from pathlib import Path
+
+          token = os.environ.get('HF_TOKEN')
+          api = HfApi(token=token)
+
+          # Upload modelo
+          if Path('models/lgbm_v4_producao.pkl').exists():
+              api.upload_file(
+                  path_or_fileobj='models/lgbm_v4_producao.pkl',
+                  path_in_repo='models/lgbm_v4_producao.pkl',
+                  repo_id='edyestatistica/dengue-mt-medallion',
+                  repo_type='dataset'
+              )
+              print('Modelo atualizado no HF Hub')
+
+          # Upload dataset atualizado
+          if Path('data/gold/dataset_features_v4.parquet').exists():
+              api.upload_file(
+                  path_or_fileobj='data/gold/dataset_features_v4.parquet',
+                  path_in_repo='gold/dataset_features_v4.parquet',
+                  repo_id='edyestatistica/dengue-mt-medallion',
+                  repo_type='dataset'
+              )
+              print('Dataset atualizado no HF Hub')
+          "
+
+      - name: Notificar sucesso
+        run: |
+          echo "Pipeline semanal concluído!"
+          echo "Data: $(date)"
+          echo "Commit: ${{ github.sha }}"

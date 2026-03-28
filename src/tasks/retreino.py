@@ -16,7 +16,7 @@ import os
 
 
 @task(name="retreinar_modelo")
-def retreinar_modelo():
+def retreinar_modelo(data_corte=None):
     """Retreina LightGBM v4 com dados mais recentes."""
     logger = get_run_logger()
     logger.info("Iniciando retreino do modelo...")
@@ -34,6 +34,15 @@ def retreinar_modelo():
         df = pd.read_parquet(gold_path)
         df['data'] = pd.to_datetime(df['data'])
         df = df.sort_values('data').dropna().reset_index(drop=True)
+
+        # Aplicar corte temporal anti-leakage
+        if data_corte:
+            n_antes = len(df)
+            df = df[df['data'] <= pd.Timestamp(data_corte)]
+            n_depois = len(df)
+            logger.info(f"Corte temporal aplicado: até {data_corte} — {n_antes} → {n_depois} registros")
+        else:
+            logger.warning("DATA_CORTE não definido — usando dataset completo (risco de leakage!)")
 
         # Features — remover leakage
         drop_cols = ['data', 'casos', 'casos_nowcast', 'municipio_id']

@@ -61,6 +61,10 @@ dataset_features_v4.parquet — 2.182 dias × 59 features
 | Storage | Hugging Face Hub | Gratuito, ilimitado público |
 | Dashboard | Streamlit Community Cloud | Gratuito, online |
 | API | FastAPI + Uvicorn | Local / Render.com |
+| Cache/Fallback | data/cache/ Parquet | Resiliência APIs externas |
+| Observabilidade | logging estruturado | reports/pipeline.log |
+| Corte temporal | calcular_data_corte() | Anti-leakage operacional |
+| Rastreabilidade | run_metadata.json | Artefato por execução |
 
 > **Custo total de infraestrutura: R$ 0,00**
 
@@ -157,24 +161,28 @@ uvicorn app.api:app --port 8000
 ## Roadmap
 
 v1.0 — concluída 25/03/2026
-- Rolling Window LightGBM v4
-- Dashboard Streamlit — 4 abas + mapa Folium
+- Rolling Window LightGBM v4 — R²=0.820
+- Dashboard Streamlit + FastAPI
 - Deploy: https://dengue-mt-ifmt.streamlit.app
-- FastAPI — 4 endpoints REST
-- Prefect pipeline + Data Contracts
-- Evidently drift monitoring
-- Arquitetura Medalhão + HF Hub
+- Prefect pipeline + Evidently + HF Hub
 
-v1.1 — Semana 9
-- Prefect Cloud agendamento automático
+v1.1 — concluída 27/03/2026
+- Governança mínima — versioning + commit SHA + feature schema
+- Reprodutibilidade — snapshot datado + metadata JSON
+- Observabilidade — logs estruturados + modularização
+- Corte temporal anti-leakage — calcular_data_corte()
+- Resiliência — cache + fallback por fonte
+
+v1.2 — Semana 10
+- Ingestão real INMET + GEE + SINAN
+- MLflow — versionamento formal
+- Dicionário de dados
 - Relatório extensionista IFMT
-- Submissão SENIC 2026
 
 v2.0 — futuro
 - Score risco v3 com previsão integrada
 - TFT com série histórica completa
-- Deploy FastAPI Render.com
-- Alertas automáticos email/WhatsApp
+- Alertas automáticos email
 
 ---
 

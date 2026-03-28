@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.1.0] — 2026-03-27
+
+### Adicionado
+- Pipeline versioning — PIPELINE_VERSION, DATASET_VERSION, MODEL_VERSION
+- Commit SHA amarrado ao schema e resumo do pipeline
+- Feature Schema como fonte de verdade — contrato formal de features
+- run_metadata.json — artefato de rastreabilidade por execução
+- Snapshot datado Gold HF Hub — `dataset_features_v4_YYYY-MM-DD.parquet`
+- Metadata JSON por snapshot — hash MD5, período, libs, commit_sha
+- Logs estruturados — duração por etapa, nulos, métricas (observabilidade real)
+- Modularização — pipeline de 726 → 130 linhas (src/tasks/)
+- calcular_data_corte() — função única anti-leakage com fallback documentado
+- DATA_CORTE propagado para todas as tasks de ingestão e retreino
+- Cache local por fonte em data/cache/ — validade diferenciada por fonte
+- Fallback automático quando API falha — pipeline não quebra
+- scripts/verificar_atrasos.py — verificação empírica de atrasos por fonte
+
+### Corrigido
+- Feature Schema desatualizado — adicionados pipeline_version, commit_sha, dataset_version
+- Data leakage operacional Google Trends — lag=7d obrigatório via DATA_CORTE
+- Pipeline monolítico 726 linhas — modularizado em src/tasks/
+
+### Baseado em literatura
+- Codeco et al. 2018 (InfoDengue) — atraso SINAN Brasil
+- PLOS Neglected Tropical Diseases 2024 — corte 15 semanas captura 95% notificações
+- NASA POWER empirical test 27/03/2026 — dado < 7d retorna -999
+
+---
+
 ## [1.0.0] — 2026-03-26
 
 ### Adicionado

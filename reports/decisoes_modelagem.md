@@ -231,6 +231,44 @@ Literatura recomenda degradação graciosa, não quebra do produto:
 - Se não existir: corte conservador de 14 dias
 - Warning explícito nos logs
 
+---
+
+## Cache e Fallback de APIs Externas (item 5)
+
+**Data:** 27/03/2026  
+**Branch:** `feature/robustez`
+
+### Problema identificado
+Pipeline dependia silenciosamente de 4 APIs externas sem fallback.
+Qualquer falha de conectividade quebraria o pipeline completamente.
+
+### Decisão: cache local com degradação graciosa
+
+Pasta `data/cache/` com arquivo por fonte + `cache_metadata.json`.
+
+**Validade do cache por fonte:**
+
+| Fonte | Validade | Justificativa |
+|---|---|---|
+| INMET | 7 dias | Atualização diária |
+| NASA POWER | 7 dias | Latência operacional |
+| Google Trends | 7 dias | Semana epidemiológica |
+| ONI Index | 30 dias | Atualização trimestral |
+| GEE/NDVI | 30 dias | Latência Sentinel-2 |
+| CNES | 90 dias | Cadastro muda pouco |
+
+**Comportamento:**
+- API ok → salva cache + retorna `fallback=False`
+- API falha → carrega cache + retorna `fallback=True` + warning no log
+- Sem cache → retorna `status=pendente` + error no log
+
+**Rastreabilidade:**
+- `fallbacks` por fonte gravado no resumo final
+- `cache_status` com validade e última atualização no `run_metadata.json`
+
+---
+
+
 
 ## Próximas decisões pendentes
 

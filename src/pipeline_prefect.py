@@ -11,7 +11,9 @@ import json
 
 from src.config import (
     PIPELINE_VERSION, DATASET_VERSION, MODEL_VERSION,
-    METADATA_DIR, COMMIT_SHA, RUN_ENV
+    METADATA_DIR, COMMIT_SHA, RUN_ENV,
+    ATRASO_OPERACIONAL_DIAS, ATRASOS_FONTES,
+    calcular_data_corte
 )
 from src.observabilidade import (
     obs_logger, log_etapa, log_nulos, log_metricas,
@@ -51,6 +53,11 @@ def pipeline_semanal():
     logger.info(f"Ambiente:         {RUN_ENV}")
 
     log_pipeline_start(PIPELINE_VERSION, DATASET_VERSION, MODEL_VERSION, COMMIT_SHA)
+
+    # Calcular DATA_CORTE anti-leakage
+    data_corte = calcular_data_corte()
+    obs_logger.info(f"DATA_CORTE | data={data_corte.strftime('%Y-%m-%d')} | atraso={ATRASO_OPERACIONAL_DIAS}d")
+    logger.info(f"Data corte operacional: {data_corte.strftime('%Y-%m-%d')}")
 
     # 1. Ingestão
     t0 = time.time(); resultado_inmet  = ingerir_inmet();         log_etapa('ingest_inmet',  t0, resultado_inmet)
@@ -145,6 +152,7 @@ def pipeline_semanal():
         'drift_r2':         drift.get('r2_recente'),
         'retreinar':        drift.get('retreinar', False),
         'retreino':         resultado_retreino['status'],
+        'data_corte': data_corte.strftime('%Y-%m-%d'),
         'gold_snapshot':    publicacao_gold.get('snapshot')
     }
 
@@ -159,6 +167,9 @@ def pipeline_semanal():
         'commit_sha':       COMMIT_SHA,
         'run_env':          RUN_ENV,
         'timestamp':        datetime.now().isoformat(),
+        'data_corte':       data_corte.strftime('%Y-%m-%d'),
+        'atraso_dias':      ATRASO_OPERACIONAL_DIAS,
+        'atrasos_fontes':   ATRASOS_FONTES,
         'resultados':       resumo
     }
     with open(METADATA_DIR / 'run_metadata.json', 'w', encoding='utf-8') as f:

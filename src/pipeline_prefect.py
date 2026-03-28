@@ -136,6 +136,8 @@ def pipeline_semanal():
         )
 
     # Resumo final
+    # Status do cache de todas as fontes
+    from src.tasks.cache import status_cache
     resumo = {
         'pipeline_version': PIPELINE_VERSION,
         'dataset_version':  DATASET_VERSION,
@@ -152,8 +154,15 @@ def pipeline_semanal():
         'drift_r2':         drift.get('r2_recente'),
         'retreinar':        drift.get('retreinar', False),
         'retreino':         resultado_retreino['status'],
-        'data_corte': data_corte.strftime('%Y-%m-%d'),
-        'gold_snapshot':    publicacao_gold.get('snapshot')
+        'data_corte':       data_corte.strftime('%Y-%m-%d'),
+        'gold_snapshot':    publicacao_gold.get('snapshot'),
+        'fallbacks':        {
+            'inmet':   resultado_inmet.get('fallback', False),
+            'nasa':    resultado_nasa.get('fallback', False),
+            'oni':     resultado_oni.get('fallback', False),
+            'trends':  resultado_trends.get('fallback', False),
+        },
+        'cache_status': status_cache()
     }
 
     logger.info(f"Pipeline concluído: {resumo}")
@@ -180,7 +189,6 @@ def pipeline_semanal():
     log_pipeline_end(datetime.now().isoformat(), resultado_retreino['status'])
 
     return resumo
-
 
 # ============================================================
 # EXECUÇÃO LOCAL

@@ -420,6 +420,56 @@ def enviar_alerta_email(assunto: str, mensagem: str):
     logger.info(f"Alerta salvo em reports/alertas.jsonl")
     return alerta
 
+# ============================================================
+# TASK — Publicar Gold no HF Hub com versionamento
+# ============================================================
+
+@task(name="publicar_gold_hf")
+def publicar_gold_versionado():
+    """Salva Gold no HF Hub com data + latest pointer."""
+    logger = get_run_logger()
+    logger.info("Publicando Gold no HF Hub...")
+
+    try:
+        from huggingface_hub import HfApi
+        from datetime import date
+
+        gold_path = DATA_DIR / 'gold' / 'dataset_features_v4.parquet'
+        if not gold_path.exists():
+            logger.warning("Gold não encontrado — pulando publicação")
+            return {'status': 'pendente'}
+
+        api = HfApi()
+        hoje = date.today().isoformat()  # ex: 2026-03-27
+
+        # 1. Upload com data — snapshot imutável
+        nome_datado = f'gold/dataset_features_v4_{hoje}.parquet'
+        api.upload_file(
+            path_or_fileobj=str(gold_path),
+            path_in_repo=nome_datado,
+            repo_id='edyestatistica/dengue-mt-medallion',
+            repo_type='dataset'
+        )
+        logger.info(f"Snapshot salvo: {nome_datado}")
+
+        # 2. Upload latest — ponteiro atual
+        api.upload_file(
+            path_or_fileobj=str(gold_path),
+            path_in_repo='gold/dataset_features_v4_latest.parquet',
+            repo_id='edyestatistica/dengue-mt-medallion',
+            repo_type='dataset'
+        )
+        logger.info("Ponteiro latest atualizado")
+
+        return {
+            'status': 'ok',
+            'snapshot': nome_datado,
+            'latest': 'gold/dataset_features_v4_latest.parquet'
+        }
+
+    except Exception as e:
+        logger.error(f"Erro ao publicar Gold: {e}")
+        return {'status': 'erro', 'motivo': str(e)}
 
 # ============================================================
 # FLOW PRINCIPAL
@@ -446,6 +496,9 @@ def pipeline_semanal():
     resultado_oni     = ingerir_oni_index()
     resultado_trends  = ingerir_google_trends()
     
+    # 1.5 Publicar Gold versionado no HF Hub
+    publicacao_gold = publicar_gold_versionado()
+
     # 2. Validar contratos de dados
     contratos = validar_contratos_dados()
     
@@ -510,7 +563,8 @@ def pipeline_semanal():
         'drift_mae': drift.get('mae_recente'),
         'drift_r2':  drift.get('r2_recente'),
         'retreinar': drift.get('retreinar', False),
-        'retreino':  resultado_retreino['status']
+        'retreino':  resultado_retreino['status'],
+        'gold_snapshot': publicacao_gold.get('snapshot')
     }
 
     logger.info(f"Pipeline concluído: {resumo}")

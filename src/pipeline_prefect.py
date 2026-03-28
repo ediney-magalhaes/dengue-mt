@@ -439,10 +439,50 @@ def publicar_gold_versionado():
             logger.warning("Gold não encontrado — pulando publicação")
             return {'status': 'pendente'}
 
-        api = HfApi()
-        hoje = date.today().isoformat()  # ex: 2026-03-27
+        import hashlib
+        import polars as pl
 
-        # 1. Upload com data — snapshot imutável
+        api = HfApi()
+        hoje = date.today().isoformat()
+
+        # Carregar dataset para extrair metadados
+        df_meta = pl.read_parquet(gold_path)
+
+        # Hash MD5 do arquivo
+        with open(gold_path, 'rb') as f:
+            file_hash = hashlib.md5(f.read()).hexdigest()
+
+        # Versões das libs-chave
+        import lightgbm as lgb_version
+        import polars as pl_version
+        libs = {
+            'polars': pl_version.__version__,
+            'lightgbm': lgb_version.__version__,
+            'pandas': pd.__version__,
+        }
+
+        # Metadata do dataset
+        metadata = {
+            'dataset_version': DATASET_VERSION,
+            'pipeline_version': PIPELINE_VERSION,
+            'commit_sha': os.environ.get('GITHUB_SHA', 'local')[:8],
+            'snapshot_date': hoje,
+            'start_date': str(df_meta['data'].min()),
+            'end_date': str(df_meta['data'].max()),
+            'n_registros': len(df_meta),
+            'n_features': len(df_meta.columns),
+            'features': df_meta.columns,
+            'file_hash_md5': file_hash,
+            'libs': libs,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # Salvar metadata local
+        metadata_path = gold_path.parent / f'dataset_features_v4_{hoje}.metadata.json'
+        with open(metadata_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+        # 1. Upload snapshot datado
         nome_datado = f'gold/dataset_features_v4_{hoje}.parquet'
         api.upload_file(
             path_or_fileobj=str(gold_path),
@@ -452,7 +492,17 @@ def publicar_gold_versionado():
         )
         logger.info(f"Snapshot salvo: {nome_datado}")
 
-        # 2. Upload latest — ponteiro atual
+        # 2. Upload metadata do snapshot
+        nome_metadata = f'gold/dataset_features_v4_{hoje}.metadata.json'
+        api.upload_file(
+            path_or_fileobj=str(metadata_path),
+            path_in_repo=nome_metadata,
+            repo_id='edyestatistica/dengue-mt-medallion',
+            repo_type='dataset'
+        )
+        logger.info(f"Metadata salvo: {nome_metadata}")
+
+        # 3. Upload latest
         api.upload_file(
             path_or_fileobj=str(gold_path),
             path_in_repo='gold/dataset_features_v4_latest.parquet',
@@ -464,7 +514,10 @@ def publicar_gold_versionado():
         return {
             'status': 'ok',
             'snapshot': nome_datado,
-            'latest': 'gold/dataset_features_v4_latest.parquet'
+            'metadata': nome_metadata,
+            'latest': 'gold/dataset_features_v4_latest.parquet',
+            'n_registros': len(df_meta),
+            'file_hash': file_hash
         }
 
     except Exception as e:

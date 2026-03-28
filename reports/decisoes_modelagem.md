@@ -172,6 +172,64 @@ src/
 
 ---
 
+---
+
+## Corte Temporal Anti-Leakage (item 4)
+
+**Data:** 27/03/2026
+**Branch:** `feature/corte-temporal`
+
+### Problema identificado
+
+O pipeline original não tinha controle de corte temporal — cada fonte de dados
+podia trazer dados além do que seria disponível em produção real, causando
+data leakage operacional silencioso.
+
+### Atrasos reais verificados empiricamente (27/03/2026)
+
+| Fonte | Atraso real | Método de verificação |
+|---|---|---|
+| NASA POWER | 7 dias | Teste empírico — dado < 7d retorna -999 |
+| Google Trends | 7 dias | Semana aberta = leakage (dado "futuro" -1 dia) |
+| ONI Index | ~2 meses | Teste empírico — último registro DJF 2026 |
+| INMET | ~2 dias | Verificação Silver local |
+| SINAN | 15 semanas | Codeco et al. 2018; PLOS NTD 2024 |
+| GEE/NDVI | ~14 dias | Literatura padrão GEE Sentinel-2 |
+
+### Decisão: DATA_CORTE único com bottleneck operacional
+
+**Corte operacional = hoje - 7 dias** (bottleneck = NASA POWER)
+
+SINAN tem 15 semanas de atraso mas é corrigido via nowcasting (já implementado).
+O bottleneck do pipeline diário é NASA POWER = 7 dias.
+
+**Referências:**
+- Codeco et al. 2018 (InfoDengue) — SINAN delay Brasil
+- PLOS Neglected Tropical Diseases 2024 — corte 15 semanas captura 95% notificações
+- NASA POWER empirical test 27/03/2026
+
+### Implementação
+
+Função `calcular_data_corte()` em `src/config.py`:
+- Calcula corte normal: hoje - 7 dias
+- Fallback 1: usa último DATA_CORTE do `run_metadata.json`
+- Fallback 2: corte conservador de 14 dias (dobro do bottleneck)
+- Nunca quebra o pipeline — degradação graciosa com log de warning
+
+DATA_CORTE propagado para todas as tasks:
+- `ingerir_nasa_power(data_corte)` — filtra dado inválido
+- `ingerir_google_trends(data_corte)` — garante lag=7d
+- `ingerir_inmet(data_corte)` — TODO: aplicar na ingestão real (Semana 10)
+- `ingerir_oni_index(data_corte)` — TODO: aplicar na ingestão real (Semana 10)
+- `retreinar_modelo(data_corte)` — filtra df[data <= DATA_CORTE]
+- Gravado no `run_metadata.json` de cada execução
+
+### Comportamento sem DATA_CORTE
+
+Literatura recomenda degradação graciosa, não quebra do produto:
+- Fallback para último corte salvo
+- Se não existir: corte conservador de 14 dias
+- Warning explícito nos logs
 
 
 ## Próximas decisões pendentes

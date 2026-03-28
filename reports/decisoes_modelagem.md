@@ -128,6 +128,52 @@ commit_sha = os.environ.get('GITHUB_SHA', 'local')[:8]
 
 **Impacto:** Auditoria completa de cada versão do dataset — requisito para publicação acadêmica e reprodutibilidade.
 
+---
+
+---
+
+## Modularização do pipeline (feature/observabilidade)
+
+**Data:** 27/03/2026
+**Branch:** `dev` (direto após merge)
+
+### Decisão: separar pipeline_prefect.py em módulos
+
+**Problema:** `pipeline_prefect.py` atingiu 726 linhas — anti-pattern que dificulta manutenção, testes unitários e leitura do código.
+
+**Estrutura adotada:**
+```
+src/
+├── pipeline_prefect.py   ← flow principal ~130 linhas
+├── config.py             ← constantes e paths centralizados
+├── observabilidade.py    ← logger estruturado independente do Prefect
+└── tasks/
+    ├── ingestao.py       ← INMET, NASA, ONI, Trends
+    ├── validacao.py      ← contratos Pandera
+    ├── drift.py          ← monitoramento de drift
+    ├── retreino.py       ← retreino + promoção/rollback
+    ├── publicacao.py     ← HF Hub versionado
+    └── alertas.py        ← notificações JSONL
+```
+
+**Justificativa:**
+- Separação de responsabilidades — cada módulo tem uma função clara
+- `observabilidade.py` independente do Prefect resolve o problema de logs estruturados
+- Facilita testes unitários por módulo
+- `config.py` centraliza todas as constantes — evita valores hardcoded espalhados
+- Pipeline principal legível — só orquestra, não implementa
+
+**Benefícios observados:**
+- Logs estruturados funcionando: duração por etapa, % nulos, métricas
+- `pipeline.log` gravado em `reports/` a cada execução
+- Comando de execução: `python -m src.pipeline_prefect`
+
+**Impacto no artigo:** cada módulo corresponde a uma subseção da metodologia.
+
+---
+
+
+
 ## Próximas decisões pendentes
 
 - [ ] Reprodutibilidade — seed global e ambiente fixo

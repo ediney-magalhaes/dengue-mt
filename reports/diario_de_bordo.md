@@ -697,6 +697,49 @@ Todo domingo 06h (automático — GitHub Actions):
 - [ ] CHANGELOG.md
 - [ ] Dicionário de dados
 - [ ] Relatório extensionista IFMT
+
+### 27/03/2026 - Revisão de Lacunas
+
+**O que foi feito:**
+
+**Branch feature/governanca-minima:**
+- 1.1 Pipeline versioning — PIPELINE_VERSION, DATASET_VERSION, MODEL_VERSION
+- 1.2 Commit SHA amarrado ao schema e resumo
+- 1.3 Feature Schema como fonte de verdade + run_metadata.json
+
+**Branch feature/reprodutibilidade:**
+- 2.1 Snapshot datado + latest pointer no HF Hub
+- 2.2 Metadata JSON por snapshot — hash MD5, período, libs, commit_sha
+
+**Branch feature/observabilidade:**
+- Logs estruturados — duração por etapa, nulos, métricas
+- Modularização — pipeline de 726 → 130 linhas
+- src/config.py, src/observabilidade.py, src/tasks/
+
+**Branch feature/corte-temporal:**
+- Verificação empírica de atrasos por fonte
+- calcular_data_corte() com fallback documentado
+- DATA_CORTE propagado para todas as tasks
+- Baseado em Codeco et al. 2018 + PLOS NTD 2024
+
+**Branch feature/robustez:**
+- Cache local por fonte em data/cache/
+- Fallback automático quando API falha
+- fallback rastreado no run_metadata.json
+
+**Próximos passos — Semana 10:**
+
+**Produto:**
+- [ ] Ingestão real INMET + GEE + SINAN (substituir stubs)
+- [ ] MLflow — versionamento formal de experimentos
+- [ ] Testar robô domingo — primeiro run automático
+
+**Documentação acadêmica:**
+- [ ] Dicionário de dados
+- [ ] Relatório extensionista IFMT
+- [ ] Atualizar resumo expandido
+- [ ] Artigo SENIC 2026
+
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

@@ -54,20 +54,45 @@ ATRASO_OPERACIONAL_DIAS = 7
 def calcular_data_corte(hoje: datetime = None, atraso_dias: int = None) -> datetime:
     """
     Calcula DATA_CORTE anti-leakage para o pipeline.
-    
-    Baseado em:
+
+    Estratégia de fallback (baseada em literatura MLOps):
+    1. Calcula corte normal: hoje - atraso_dias
+    2. Se não conseguir calcular → usa último corte salvo no run_metadata.json
+    3. Se não houver metadata anterior → usa atraso conservador de 14 dias
+       (dobro do bottleneck operacional — degradação graciosa)
+
+    Referências:
     - Codeco et al. 2018 (InfoDengue) — SINAN delay 15 semanas
-    - PLOS Neglected Tropical Diseases 2024 — 95% reporting cutoff
-    - NASA POWER empirical test — dado < 7d retorna -999
-    - Google Trends — semana aberta = data leakage operacional
-    
-    Returns:
-        datetime: data máxima segura para usar como input do modelo
+    - PLOS NTD 2024 — 95% reporting cutoff Brazil
+    - NASA POWER empirical test 27/03/2026
     """
     if hoje is None:
         hoje = datetime.now()
     if atraso_dias is None:
         atraso_dias = ATRASO_OPERACIONAL_DIAS
-    
-    data_corte = hoje - timedelta(days=atraso_dias)
-    return data_corte
+
+    try:
+        data_corte = hoje - timedelta(days=atraso_dias)
+        return data_corte
+
+    except Exception:
+        # Fallback 1: usar último corte salvo
+        metadata_path = ROOT_DIR / 'metadata' / 'run_metadata.json'
+        if metadata_path.exists():
+            with open(metadata_path) as f:
+                import json
+                meta = json.load(f)
+            ultimo_corte = meta.get('data_corte')
+            if ultimo_corte:
+                import logging
+                logging.getLogger('dengue-mt.pipeline').warning(
+                    f"DATA_CORTE calculado com fallback — usando último: {ultimo_corte}"
+                )
+                return datetime.strptime(ultimo_corte, '%Y-%m-%d')
+
+        # Fallback 2: corte conservador dobrado (14 dias)
+        import logging
+        logging.getLogger('dengue-mt.pipeline').warning(
+            "DATA_CORTE sem metadata anterior — usando fallback conservador: 14 dias"
+        )
+        return hoje - timedelta(days=14)

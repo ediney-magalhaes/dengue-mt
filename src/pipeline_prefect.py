@@ -59,11 +59,11 @@ def pipeline_semanal():
     obs_logger.info(f"DATA_CORTE | data={data_corte.strftime('%Y-%m-%d')} | atraso={ATRASO_OPERACIONAL_DIAS}d")
     logger.info(f"Data corte operacional: {data_corte.strftime('%Y-%m-%d')}")
 
-    # 1. Ingestão
-    t0 = time.time(); resultado_inmet  = ingerir_inmet();         log_etapa('ingest_inmet',  t0, resultado_inmet)
-    t0 = time.time(); resultado_nasa   = ingerir_nasa_power();    log_etapa('ingest_nasa',   t0, resultado_nasa)
-    t0 = time.time(); resultado_oni    = ingerir_oni_index();     log_etapa('ingest_oni',    t0, resultado_oni)
-    t0 = time.time(); resultado_trends = ingerir_google_trends(); log_etapa('ingest_trends', t0, resultado_trends)
+    # 1. Ingestão — todas as tasks recebem data_corte
+    t0 = time.time(); resultado_inmet  = ingerir_inmet(data_corte=data_corte);          log_etapa('ingest_inmet',  t0, resultado_inmet)
+    t0 = time.time(); resultado_nasa   = ingerir_nasa_power(data_corte=data_corte);     log_etapa('ingest_nasa',   t0, resultado_nasa)
+    t0 = time.time(); resultado_oni    = ingerir_oni_index(data_corte=data_corte);      log_etapa('ingest_oni',    t0, resultado_oni)
+    t0 = time.time(); resultado_trends = ingerir_google_trends(data_corte=data_corte);  log_etapa('ingest_trends', t0, resultado_trends)
 
     # 1.5 Publicar Gold versionado
     t0 = time.time()
@@ -103,7 +103,7 @@ def pipeline_semanal():
         logger.info("Drift detectado — iniciando retreino...")
         obs_logger.info("RETREINO_INICIO | motivo=drift_detectado")
         t0 = time.time()
-        resultado_retreino = retreinar_modelo()
+        resultado_retreino = retreinar_modelo(data_corte=data_corte)
         log_etapa('retreinar_modelo', t0, resultado_retreino)
         obs_logger.info(
             f"RETREINO_DECISAO | status={resultado_retreino['status']} "

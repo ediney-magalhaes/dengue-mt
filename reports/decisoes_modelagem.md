@@ -85,6 +85,49 @@ commit_sha = os.environ.get('GITHUB_SHA', 'local')[:8]
 
 ---
 
+## Reprodutibilidade — Versionamento real do Gold (item 2.1 e 2.2)
+
+**Data:** 27/03/2026
+**Branch:** `feature/reprodutibilidade`
+
+### 2.1 — Snapshot datado + ponteiro latest
+
+**Decisão:** A cada execução do pipeline, salvar o Gold no HF Hub em dois arquivos:
+- `gold/dataset_features_v4_YYYY-MM-DD.parquet` — snapshot imutável datado
+- `gold/dataset_features_v4_latest.parquet` — ponteiro para o mais recente
+
+**Justificativa:** Antes desta mudança não era possível responder "esse modelo foi treinado com qual versão exata do dataset?". O snapshot datado garante rastreabilidade completa entre modelo e dados.
+
+**Impacto:** Qualquer retreino futuro pode ser reproduzido baixando o snapshot da data correspondente.
+
+---
+
+### 2.2 — Metadata JSON por snapshot
+
+**Decisão:** Junto com cada snapshot, salvar `dataset_features_v4_YYYY-MM-DD.metadata.json` contendo:
+```json
+{
+  "dataset_version": "v4",
+  "pipeline_version": "1.0.1-dev",
+  "commit_sha": "...",
+  "snapshot_date": "2026-03-27",
+  "start_date": "2018-01-01",
+  "end_date": "2024-12-28",
+  "n_registros": 2242,
+  "n_features": 67,
+  "file_hash_md5": "...",
+  "libs": {
+    "polars": "...",
+    "lightgbm": "...",
+    "pandas": "..."
+  }
+}
+```
+
+**Justificativa:** O hash MD5 garante integridade do arquivo. As versões das libs garantem reprodutibilidade do ambiente. O período confirma cobertura temporal.
+
+**Impacto:** Auditoria completa de cada versão do dataset — requisito para publicação acadêmica e reprodutibilidade.
+
 ## Próximas decisões pendentes
 
 - [ ] Reprodutibilidade — seed global e ambiente fixo

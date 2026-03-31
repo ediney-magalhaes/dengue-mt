@@ -740,6 +740,25 @@ Todo domingo 06h (automático — GitHub Actions):
 - [ ] Atualizar resumo expandido
 - [ ] Artigo SENIC 2026
 
+## 📅 Semana 10: Primeiro run automático do robô
+
+### 30/03/2026
+
+**Pipeline rodou na nuvem pela primeira vez!**
+
+**Problemas encontrados e corrigidos:**
+- `python src/pipeline_prefect.py` → `python -m src.pipeline_prefect`
+- `polars` não instalado no CI → adicionado nas dependências
+- NASA POWER com atraso 7d retornando -999 → aumentado para 14d
+- Silver INMET não disponível no CI → enviado ao HF Hub
+
+**Resultado final (31/03/2026 00:48 UTC):**
+- inmet: ok | nasa_power: ok | oni: ok | trends: ok
+- contratos: ok | drift_mae: 2.41 | R²: 0.987
+- retreino: não necessário | data_corte: 2026-03-17
+- fallbacks: todos False — todas as APIs respondendo
+- commit_sha: ccffb776 gravado no run_metadata.json
+
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

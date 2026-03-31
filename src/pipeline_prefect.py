@@ -4,6 +4,7 @@
 # ============================================================
 
 from prefect import flow, get_run_logger
+from src.tasks.relatorio import gerar_relatorio_execucao
 from datetime import datetime
 from pathlib import Path
 import time
@@ -187,6 +188,9 @@ def pipeline_semanal():
     logger.info("Metadata salvo em metadata/run_metadata.json")
 
     log_pipeline_end(datetime.now().isoformat(), resultado_retreino['status'])
+
+    # Gerar relatório de execução automático
+    gerar_relatorio_execucao(resumo)
 
     return resumo
 

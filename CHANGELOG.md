@@ -5,6 +5,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.2.0] — 2026-03-30
+
+### Adicionado
+- Relatório de execução automático — `src/tasks/relatorio.py` gera `reports/execucao_YYYY-MM-DD.md`
+- Drift acionável com Wasserstein distance por feature — níveis Normal/Moderado/Crítico
+- Parâmetros conservadores automáticos em drift crítico (n_estimators=1000, lr=0.01)
+- Drift score por feature gravado no log e run_metadata.json
+- Banner visual 🟢🟡🔴 no dashboard — status do modelo em tempo real
+- Fallback ativo sinalizado no banner do dashboard
+- Dashboard modularizado em `app/components/` — 6 arquivos de componentes
+- Silver INMET disponibilizado no HF Hub para CI/CD
+- Primeiro run automático do robô validado — 31/03/2026 00:48 UTC
+
+### Corrigido
+- CI/CD: `python src/pipeline_prefect.py` → `python -m src.pipeline_prefect`
+- NASA POWER: atraso operacional 7d → 14d (verificação empírica 27/03/2026)
+- Polars adicionado nas dependências do job de retreino no CI
+- Banner do dashboard: leitura do run_metadata.json corrigida (campo `resultados`)
+
+### Organização
+- Scripts históricos de ingestão movidos para `scripts/historico/`
+- `.gitignore` atualizado — lightning_logs, checkpoints, modelos obsoletos
+- `src/` limpo — apenas pipeline e tasks em produção
+- `__pycache__` adicionado ao `.gitignore`
+
+### Baseado em literatura
+- BMC Medical Research Methodology 2022 — critérios de promoção de modelos preditivos clínicos
+- Wasserstein distance como métrica de drift — MLOps best practices (ScienceDirect 2025)
+
+
+---
+
 ## [1.1.0] — 2026-03-27
 
 ### Adicionado

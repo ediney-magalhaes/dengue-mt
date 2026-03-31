@@ -189,7 +189,7 @@ data leakage operacional silencioso.
 
 | Fonte | Atraso real | Método de verificação |
 |---|---|---|
-| NASA POWER | 7 dias | Teste empírico — dado < 7d retorna -999 |
+| NASA POWER | 14 dias | Teste empírico — dado < 14d retorna -999 (verificado 27/03/2026) |
 | Google Trends | 7 dias | Semana aberta = leakage (dado "futuro" -1 dia) |
 | ONI Index | ~2 meses | Teste empírico — último registro DJF 2026 |
 | INMET | ~2 dias | Verificação Silver local |
@@ -268,13 +268,64 @@ Pasta `data/cache/` com arquivo por fonte + `cache_metadata.json`.
 
 ---
 
+## Drift Acionável — Wasserstein + Níveis (item 6)
 
+**Data:** 30/03/2026
+**Branch:** `dev`
+
+### Decisão: integrar Wasserstein distance ao pipeline com ações automáticas
+
+**Problema:** O drift era apenas monitorado — não gerava ações automáticas diferenciadas.
+
+**Níveis implementados:**
+
+| Nível | Score Wasserstein | Ação |
+|---|---|---|
+| 🟢 Normal | < 0.3 | Pipeline normal |
+| 🟡 Moderado | 0.3 – 0.6 | Retreino com params padrão |
+| 🔴 Crítico | ≥ 0.6 | Retreino conservador obrigatório |
+
+**Parâmetros conservadores (drift crítico):**
+```python
+{'n_estimators': 1000, 'learning_rate': 0.01, 'num_leaves': 20}
+```
+
+**Regra de promoção reforçada:**
+- pytest 13 testes ✅
+- R²_novo >= R²_atual - 0.05
+- MAE_novo <= MAE_atual * 1.10
+
+**Referência:** BMC Medical Research Methodology 2022 — recomenda examinar pelo menos dois aspectos de desempenho estatístico (discriminação e calibração) para comparar modelos preditivos clínicos.
+
+**Rastreabilidade:**
+- `drift_score` e `nivel_drift` gravados no `run_metadata.json`
+- `DRIFT_SCORE | score | nivel | retreinar` logado estruturadamente
+- Banner visual 🟢🟡🔴 no dashboard lê o `run_metadata.json`
+
+---
+
+## Relatório de Execução Automático (item 6 — entrega)
+
+**Data:** 30/03/2026
+
+### Decisão: gerar relatório markdown por execução
+
+`src/tasks/relatorio.py` gera `reports/execucao_YYYY-MM-DD.md` a cada run com:
+1. Status das etapas de ingestão
+2. Fallbacks ativados por fonte
+3. Cache das fontes (validade + registros)
+4. Métricas do modelo (MAE, R², drift)
+5. Gold Dataset (snapshot + link HF Hub)
+6. Decisão final (promoveu / rollback / estável)
+
+**Justificativa:** Requisito de auditabilidade MLOps — cada execução deve ser rastreável sem acessar logs brutos.
+
+---
 
 ## Próximas decisões pendentes
 
-- [ ] Reprodutibilidade — seed global e ambiente fixo
-- [ ] Versionamento lógico de dados (não só snapshot)
+- [ ] MLflow — versionamento formal de experimentos
+- [ ] Ingestão real INMET + GEE + SINAN (Semana 10)
 - [ ] Feature Store lógica — serving consistente
-- [ ] Controle de data leakage operacional
-- [ ] Observabilidade real (logs estruturados)
-- [ ] Fallbacks para APIs externas
+- [ ] Dicionário de dados formal
+- [ ] Seed global e ambiente fixo para reprodutibilidade total

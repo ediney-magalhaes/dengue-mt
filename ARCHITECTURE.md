@@ -81,27 +81,45 @@ dataset_features_v4.parquet — 2.182 dias × 59 features
 
 ### Ranking Completo
 
-| Modelo | R² | Status |
-|---|---|---|
-| Rolling Window LightGBM | 0.892 | PRODUÇÃO |
-| LightGBM v4 otimizado | 0.820 | atual |
-| Ensemble LightGBM+CNN/BiLSTM | 0.873 | experimental |
-| CNN + BiLSTM | 0.756 | experimental |
-| LSTM v2 | 0.664 | experimental |
+| Modelo | R² | Validação | Status |
+|---|---|---|---|
+| **LightGBM v4** | **0.820** | **TimeSeriesSplit 5 folds** | ✅ **PRODUÇÃO** |
+| Ensemble LightGBM+CNN/BiLSTM | 0.873 | Rolling Window | experimental |
+| CNN + BiLSTM | 0.756 | Rolling Window | experimental |
+| LSTM v2 | 0.664 | Rolling Window | experimental |
+
+> **Nota:** R²=0.892 (Rolling Window) é métrica otimista — avalia apenas janela recente de 90 dias.
+> R²=0.820 (TimeSeriesSplit) é a métrica oficial — academicamente defensável para publicação.
 
 ---
 
-## Monitoramento de Drift (Evidently)
+## Monitoramento de Drift
 
 Resultado — Referência 2018-2023 vs Atual 2023-2024:
 - 13/13 features com drift detectado (100%)
-- Teste: Wasserstein distance normalizada
+- Teste: Wasserstein distance normalizada por feature
 - Causa: El Niño 2023-2024 excepcional + surto histórico 2024
 - Justifica retreino contínuo via Rolling Window
 
-Limiares do pipeline Prefect:
+**Níveis de drift (Wasserstein normalizada):**
+
+| Nível | Score | Ação |
+|---|---|---|
+| 🟢 Normal | < 0.3 | Pipeline normal |
+| 🟡 Moderado | 0.3 – 0.6 | Retreino com params padrão |
+| 🔴 Crítico | ≥ 0.6 | Retreino conservador obrigatório |
+
+**Parâmetros conservadores (drift crítico):**
+- n_estimators=1000, learning_rate=0.01, num_leaves=20
+
+**Limiares do pipeline Prefect:**
 - MAE_LIMIAR = 25.0 casos/dia
 - R2_MINIMO  = 0.75
+
+**Regra de promoção (BMC Medical Research Methodology 2022):**
+- pytest 13 testes ✅
+- R²_novo >= R²_atual - 0.05
+- MAE_novo <= MAE_atual * 1.10
 
 ---
 
@@ -173,7 +191,15 @@ v1.1 — concluída 27/03/2026
 - Corte temporal anti-leakage — calcular_data_corte()
 - Resiliência — cache + fallback por fonte
 
-v1.2 — Semana 10
+v1.2 — concluída 30/03/2026
+- Relatório de execução automático por run
+- Drift acionável — Wasserstein + níveis + params conservadores
+- Banner visual 🟢🟡🔴 no dashboard
+- Dashboard modularizado em app/components/
+- Primeiro run automático validado — 31/03/2026 00:48 UTC
+- Organização do repositório — scripts/historico/
+
+v1.3 — próxima
 - Ingestão real INMET + GEE + SINAN
 - MLflow — versionamento formal
 - Dicionário de dados

@@ -647,7 +647,7 @@
 
 **Produto:**
 - [x] Prefect Cloud — agendamento automático semanal na nuvem
-- [ ] CHANGELOG.md — rastrear versões do produto
+- [x] CHANGELOG.md — rastrear versões do produto
 
 **Documentação acadêmica:**
 - [ ] Dicionário de dados — descrever cada feature (base para o artigo)
@@ -694,7 +694,7 @@ Todo domingo 06h (automático — GitHub Actions):
 
 **Próximos passos — Semana 9 (continuação):**
 - [ ] MLflow — versionamento formal de experimentos
-- [ ] CHANGELOG.md
+- [x] CHANGELOG.md
 - [ ] Dicionário de dados
 - [ ] Relatório extensionista IFMT
 
@@ -730,9 +730,9 @@ Todo domingo 06h (automático — GitHub Actions):
 **Próximos passos — Semana 10:**
 
 **Produto:**
-- [ ] Ingestão real INMET + GEE + SINAN (substituir stubs)
+- [x] Ingestão real INMET + GEE + SINAN (substituir stubs)
 - [ ] MLflow — versionamento formal de experimentos
-- [ ] Testar robô domingo — primeiro run automático
+- [x] Testar robô domingo — primeiro run automático
 
 **Documentação acadêmica:**
 - [ ] Dicionário de dados
@@ -758,6 +758,38 @@ Todo domingo 06h (automático — GitHub Actions):
 - retreino: não necessário | data_corte: 2026-03-17
 - fallbacks: todos False — todas as APIs respondendo
 - commit_sha: ccffb776 gravado no run_metadata.json
+
+### Sessão 30/03/2026 — Lacunas pós-Rodada 0
+
+**O que foi feito:**
+
+**Relatório automático de execução:**
+- `src/tasks/relatorio.py` — gera `reports/execucao_YYYY-MM-DD.md` a cada run
+- Inclui status de etapas, fallbacks, cache, métricas, decisão final
+
+**Drift acionável — Wasserstein integrado:**
+- Níveis Normal (<0.3) / Moderado (0.3-0.6) / Crítico (≥0.6)
+- Drift crítico → parâmetros conservadores automáticos (n_estimators=1000, lr=0.01)
+- Drift score por feature gravado no log e run_metadata.json
+- Referência: BMC Medical Research Methodology 2022
+
+**Banner visual no dashboard:**
+- 🟢🟡🔴 interpretável com dados do último run
+- Fallback ativo sinalizado no banner
+- Dashboard modularizado em `app/components/`
+
+**Organização do repositório:**
+- Scripts históricos movidos para `scripts/historico/`
+- `.gitignore` atualizado — logs, checkpoints, modelos obsoletos
+- `src/` limpo — apenas pipeline e tasks em produção
+
+**Próximas lacunas:**
+- [ ] Promoção/rollback com pytest integrado ao pipeline
+- [ ] MLflow — versionamento formal de experimentos
+- [ ] Ingestão real INMET + GEE + SINAN
+- [ ] Dicionário de dados
+- [ ] Relatório extensionista IFMT
+- [ ] Artigo SENIC 2026
 
 ---
 

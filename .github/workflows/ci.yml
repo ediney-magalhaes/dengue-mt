@@ -138,7 +138,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python -m src.pipeline_prefect.py
+          python -m src.pipeline_prefect
 
       - name: Upload modelo atualizado para HF Hub
         env:

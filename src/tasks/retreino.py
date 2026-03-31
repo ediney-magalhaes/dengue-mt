@@ -16,7 +16,7 @@ import os
 
 
 @task(name="retreinar_modelo")
-def retreinar_modelo(data_corte=None):
+def retreinar_modelo(data_corte=None, params_retreino=None):
     """Retreina LightGBM v4 com dados mais recentes."""
     logger = get_run_logger()
     logger.info("Iniciando retreino do modelo...")
@@ -97,15 +97,22 @@ def retreinar_modelo(data_corte=None):
         X_train  = df_train.drop(columns=drop_cols)
         y_train  = df_train['casos']
 
+        # Parâmetros dinâmicos — conservadores se drift crítico
+        params_dinamicos = params_retreino or {}
         params = {
-            'objective':          'regression',
-            'metric':             'mae',
-            'verbosity':          -1,
-            'n_estimators':       500,
-            'learning_rate':      0.05,
-            'num_leaves':         31,
-            'random_state':       42
+            'objective':      'regression',
+            'metric':         'mae',
+            'verbosity':      -1,
+            'n_estimators':   params_dinamicos.get('n_estimators', 500),
+            'learning_rate':  params_dinamicos.get('learning_rate', 0.05),
+            'num_leaves':     params_dinamicos.get('num_leaves', 31),
+            'random_state':   42
         }
+        logger.info(
+            f"Params retreino: n_estimators={params['n_estimators']} "
+            f"lr={params['learning_rate']} "
+            f"motivo={params_dinamicos.get('motivo', 'padrao')}"
+        )
 
         novo_modelo = lgb.LGBMRegressor(**params)
         novo_modelo.fit(X_train, y_train)

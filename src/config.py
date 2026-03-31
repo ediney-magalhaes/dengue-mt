@@ -48,7 +48,7 @@ ATRASOS_FONTES = {
 # Corte operacional — bottleneck = fonte mais lenta em uso diário
 # SINAN tem 15 semanas mas é corrigido via nowcasting
 # O bottleneck operacional é NASA POWER = 7 dias
-ATRASO_OPERACIONAL_DIAS = 7
+ATRASO_OPERACIONAL_DIAS = 14  # NASA POWER: dado < 7d retorna -999; usando 14d como margem segura
 
 
 def calcular_data_corte(hoje: datetime = None, atraso_dias: int = None) -> datetime:

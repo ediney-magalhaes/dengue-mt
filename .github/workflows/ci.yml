@@ -119,11 +119,13 @@ jobs:
           Path('data/gold').mkdir(parents=True, exist_ok=True)
           Path('data/external').mkdir(parents=True, exist_ok=True)
           Path('models').mkdir(parents=True, exist_ok=True)
+          Path('data/silver/inmet').mkdir(parents=True, exist_ok=True)
 
           files = [
               ('gold/dataset_features_v4.parquet', 'data/gold/dataset_features_v4.parquet'),
               ('external/nowcasting_fatores.parquet', 'data/external/nowcasting_fatores.parquet'),
               ('models/lgbm_v4_producao.pkl', 'models/lgbm_v4_producao.pkl'),
+              ('silver/inmet/inmet_cuiaba_2018_2024.parquet', 'data/silver/inmet/inmet_cuiaba_2018_2024.parquet'),
           ]
           for repo_path, local_path in files:
               path = hf_hub_download(

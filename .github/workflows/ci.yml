@@ -103,7 +103,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install pandas numpy scikit-learn lightgbm joblib pyarrow \
-                      huggingface_hub prefect requests pytrends evidently
+                      huggingface_hub prefect requests pytrends evidently polars
 
       - name: Baixar dados e modelo do HF Hub
         env:

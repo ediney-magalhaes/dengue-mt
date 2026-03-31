@@ -97,6 +97,11 @@ def pipeline_semanal():
     log_etapa('monitorar_drift', t0, drift)
     if drift.get('mae_recente'):
         log_metricas(drift['mae_recente'], drift['r2_recente'])
+        obs_logger.info(
+            f"DRIFT_SCORE | score={drift.get('drift_score')} "
+            f"| nivel={drift.get('nivel_drift')} "
+            f"| retreinar={drift.get('retreinar')}"
+        )
 
     # 4. Retreino
     resultado_retreino = {'status': 'nao_executado'}
@@ -104,7 +109,7 @@ def pipeline_semanal():
         logger.info("Drift detectado — iniciando retreino...")
         obs_logger.info("RETREINO_INICIO | motivo=drift_detectado")
         t0 = time.time()
-        resultado_retreino = retreinar_modelo(data_corte=data_corte)
+        resultado_retreino = retreinar_modelo(data_corte=data_corte, params_retreino=drift.get('params_retreino'))
         log_etapa('retreinar_modelo', t0, resultado_retreino)
         obs_logger.info(
             f"RETREINO_DECISAO | status={resultado_retreino['status']} "
@@ -157,6 +162,8 @@ def pipeline_semanal():
         'retreino':         resultado_retreino['status'],
         'data_corte':       data_corte.strftime('%Y-%m-%d'),
         'gold_snapshot':    publicacao_gold.get('snapshot'),
+        'drift_score':  drift.get('drift_score'),
+        'nivel_drift':  drift.get('nivel_drift'),
         'fallbacks':        {
             'inmet':   resultado_inmet.get('fallback', False),
             'nasa':    resultado_nasa.get('fallback', False),

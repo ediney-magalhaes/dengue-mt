@@ -118,3 +118,60 @@ def gerar_relatorio_execucao(resumo: dict) -> str:
 
     logger.info(f"Relatório salvo: {relatorio_path}")
     return str(relatorio_path)
+
+def publicar_relatorio_hf(relatorio_path: str, resumo: dict):
+    """
+    Publica relatório de execução no HF Hub.
+    - Snapshot datado: reports/execucao_YYYY-MM-DD.md
+    - Ponteiro fixo:   reports/execucao_latest.md
+    """
+    import logging
+    logger = logging.getLogger('dengue-mt.pipeline')
+
+    try:
+        from huggingface_hub import HfApi
+        import os
+
+        token = os.environ.get('HF_TOKEN')
+        if not token:
+            logger.warning("HF_TOKEN não encontrado — relatório não publicado no HF Hub")
+            return {'status': 'skip', 'motivo': 'sem HF_TOKEN'}
+
+        api      = HfApi(token=token)
+        repo_id  = 'edyestatistica/dengue-mt-medallion'
+        hoje     = datetime.now().strftime('%Y-%m-%d')
+
+        # 1. Snapshot datado
+        snapshot_path = f'reports/execucao_{hoje}.md'
+        api.upload_file(
+            path_or_fileobj=relatorio_path,
+            path_in_repo=snapshot_path,
+            repo_id=repo_id,
+            repo_type='dataset',
+            commit_message=f'report: execução {hoje} — drift={resumo.get("nivel_drift")} retreino={resumo.get("retreino")}'
+        )
+        logger.info(f"Relatório snapshot publicado: {snapshot_path}")
+
+        # 2. Ponteiro latest
+        api.upload_file(
+            path_or_fileobj=relatorio_path,
+            path_in_repo='reports/execucao_latest.md',
+            repo_id=repo_id,
+            repo_type='dataset',
+            commit_message=f'report: latest atualizado — {hoje}'
+        )
+        logger.info("Relatório latest atualizado no HF Hub")
+
+        url_latest   = f"https://huggingface.co/datasets/{repo_id}/blob/main/reports/execucao_latest.md"
+        url_snapshot = f"https://huggingface.co/datasets/{repo_id}/blob/main/{snapshot_path}"
+
+        return {
+            'status':       'ok',
+            'url_latest':   url_latest,
+            'url_snapshot': url_snapshot,
+            'snapshot':     snapshot_path
+        }
+
+    except Exception as e:
+        logger.error(f"Erro ao publicar relatório no HF Hub: {e}")
+        return {'status': 'erro', 'motivo': str(e)}

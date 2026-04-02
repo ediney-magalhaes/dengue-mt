@@ -4,6 +4,7 @@
 
 import streamlit as st
 import plotly.express as px
+import pandas as pd
 from components.dados import get_historico
 
 
@@ -16,6 +17,7 @@ def render_aba_serie():
         st.error("❌ Dados históricos indisponíveis")
         return
 
+    df_hist['data'] = pd.to_datetime(df_hist['data'])
     df_hist['ano'] = df_hist['data'].dt.year
     anos = sorted(df_hist['ano'].unique())
 

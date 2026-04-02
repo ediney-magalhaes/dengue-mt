@@ -197,7 +197,7 @@ def pipeline_semanal():
     log_pipeline_end(datetime.now().isoformat(), resultado_retreino['status'])
 
     # Gerar e publicar relatório de execução automático
-    from src.tasks.relatorio import publicar_relatorio_hf
+    from src.tasks.relatorio import publicar_relatorio_hf, atualizar_historico_runs
     relatorio_path = gerar_relatorio_execucao(resumo)
     resultado_relatorio = publicar_relatorio_hf(relatorio_path, resumo)
     if resultado_relatorio.get('status') == 'ok':
@@ -205,6 +205,7 @@ def pipeline_semanal():
         resumo['relatorio_url'] = resultado_relatorio.get('url_latest')
     else:
         logger.warning(f"Relatório não publicado: {resultado_relatorio.get('motivo')}")
+    atualizar_historico_runs(resumo)
 
     return resumo
 

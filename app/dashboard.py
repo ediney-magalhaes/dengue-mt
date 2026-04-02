@@ -16,6 +16,7 @@ from components.aba_mapa import render_aba_mapa
 from components.aba_serie import render_aba_serie
 from components.aba_previsao import render_aba_previsao
 from components.aba_sobre import render_aba_sobre
+from components.aba_monitoramento import render_aba_monitoramento
 
 # ============================================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -97,10 +98,11 @@ st.markdown("---")
 # ============================================================
 # ABAS
 # ============================================================
-aba1, aba2, aba3, aba4 = st.tabs([
+aba1, aba2, aba3, aba4, aba5 = st.tabs([
     "🗺️ Mapa de Risco",
     "📈 Série Temporal",
     "🤖 Previsão",
+    "📊 Monitoramento",
     "ℹ️ Sobre"
 ])
 
@@ -114,4 +116,7 @@ with aba3:
     render_aba_previsao(horizonte)
 
 with aba4:
+    render_aba_monitoramento()
+
+with aba5:
     render_aba_sobre()

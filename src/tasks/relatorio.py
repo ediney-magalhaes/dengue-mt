@@ -175,3 +175,68 @@ def publicar_relatorio_hf(relatorio_path: str, resumo: dict):
     except Exception as e:
         logger.error(f"Erro ao publicar relatório no HF Hub: {e}")
         return {'status': 'erro', 'motivo': str(e)}
+
+def atualizar_historico_runs(resumo: dict):
+    """
+    Mantém histórico de execuções em reports/historico_runs.parquet no HF Hub.
+    Acumula um registro por execução — cresce semanalmente.
+    """
+    import logging
+    import os
+    import pandas as pd
+    import tempfile
+    logger = logging.getLogger('dengue-mt.pipeline')
+
+    token = os.environ.get('HF_TOKEN')
+    if not token:
+        logger.warning("HF_TOKEN não encontrado — histórico não atualizado")
+        return
+
+    try:
+        from huggingface_hub import HfApi, hf_hub_download
+        api     = HfApi(token=token)
+        repo_id = 'edyestatistica/dengue-mt-medallion'
+
+        # Tentar carregar histórico existente
+        try:
+            path = hf_hub_download(
+                repo_id=repo_id,
+                filename='reports/historico_runs.parquet',
+                repo_type='dataset', token=token
+            )
+            df_hist = pd.read_parquet(path)
+        except Exception:
+            df_hist = pd.DataFrame()
+
+        # Novo registro
+        novo = {
+            'timestamp':   resumo.get('timestamp'),
+            'drift_score': float(resumo.get('drift_score', 0)) if resumo.get('drift_score') else None,
+            'nivel_drift': resumo.get('nivel_drift'),
+            'drift_mae':   resumo.get('drift_mae'),
+            'drift_r2':    resumo.get('drift_r2'),
+            'retreino':    resumo.get('retreino'),
+            'commit_sha':  resumo.get('commit_sha'),
+            'data_corte':  resumo.get('data_corte'),
+            'inmet':       resumo.get('fallbacks', {}).get('inmet', False),
+            'nasa':        resumo.get('fallbacks', {}).get('nasa', False),
+            'oni':         resumo.get('fallbacks', {}).get('oni', False),
+            'trends':      resumo.get('fallbacks', {}).get('trends', False),
+        }
+        df_novo   = pd.DataFrame([novo])
+        df_result = pd.concat([df_hist, df_novo], ignore_index=True)
+
+        # Salvar e publicar
+        with tempfile.NamedTemporaryFile(suffix='.parquet', delete=False) as f:
+            df_result.to_parquet(f.name, index=False)
+            api.upload_file(
+                path_or_fileobj=f.name,
+                path_in_repo='reports/historico_runs.parquet',
+                repo_id=repo_id,
+                repo_type='dataset',
+                commit_message=f'history: run {novo["timestamp"][:10]}'
+            )
+        logger.info(f"Histórico atualizado: {len(df_result)} execuções")
+
+    except Exception as e:
+        logger.error(f"Erro ao atualizar histórico: {e}")

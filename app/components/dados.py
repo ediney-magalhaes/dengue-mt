@@ -34,7 +34,6 @@ def carregar_do_hf(arquivo):
         )
         return pd.read_parquet(path)
     except Exception as e:
-        st.warning(f"HF Hub indisponível: {e}")
         return None
 
 

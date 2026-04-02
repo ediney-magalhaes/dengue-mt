@@ -784,8 +784,48 @@ Todo domingo 06h (automático — GitHub Actions):
 - `src/` limpo — apenas pipeline e tasks em produção
 
 **Próximas lacunas:**
+- [x] Promoção/rollback com pytest integrado ao pipeline
+- [x] MLflow — versionamento formal de experimentos
+- [ ] Ingestão real INMET + GEE + SINAN
+- [ ] Dicionário de dados
+- [ ] Relatório extensionista IFMT
+- [ ] Artigo SENIC 2026
+
+
+## Sessão 01/04/2026 — Publicação de Relatórios + MLflow
+
+**O que foi feito:**
+
+**Publicação de relatórios no HF Hub:**
+- `publicar_relatorio_hf()` em `src/tasks/relatorio.py`
+- Snapshot datado: `reports/execucao_YYYY-MM-DD.md`
+- Ponteiro fixo: `reports/execucao_latest.md`
+- Skip gracioso sem HF_TOKEN — não quebra o pipeline
+
+**Histórico de runs:**
+- `atualizar_historico_runs()` — acumula `reports/historico_runs.parquet` no HF Hub
+- Dashboard lê o histórico e exibe gráficos na aba Monitoramento
+
+**Aba Monitoramento no dashboard:**
+- `app/components/aba_monitoramento.py`
+- Cards: Drift Score, MAE, R², Nível Drift
+- Gráfico histórico drift score com limiares visuais
+- Gráfico MAE e R² ao longo do tempo
+- Tabela histórico de decisões
+- Link para relatório técnico no HF Hub
+
+**MLflow tracking:**
+- `src/tasks/mlflow_tracking.py` — registra cada run
+- Backend SQLite local (`mlflow.db`)
+- Tags, params, metrics, artifacts registrados
+- run_id gravado no resumo do pipeline
+- MLflow UI 3.x mudou foco para GenAI — visualização de runs ML pendente
+
+**Próximas lacunas:**
+- [x] Publicação de relatórios no HF Hub
+- [x] MLflow — versionamento formal de experimentos **parcial (UI pendente)**
+- [ ] MLflow UI — resolver visualização de runs na versão 3.x
 - [ ] Promoção/rollback com pytest integrado ao pipeline
-- [ ] MLflow — versionamento formal de experimentos
 - [ ] Ingestão real INMET + GEE + SINAN
 - [ ] Dicionário de dados
 - [ ] Relatório extensionista IFMT

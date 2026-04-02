@@ -831,6 +831,25 @@ Todo domingo 06h (automático — GitHub Actions):
 - [ ] Relatório extensionista IFMT
 - [ ] Artigo SENIC 2026
 
+## 📅 Sessão 02/04/2026 — MLflow completo + métricas por fold
+
+**O que foi feito:**
+
+**MLflow tracking completo:**
+- Tags, params, metrics, artifacts registrados a cada run
+- Backend SQLite local (`mlflow.db`)
+- Métricas por fold TimeSeriesSplit adicionadas ao retreino
+- `mlflow.db` e `mlruns/` adicionados ao `.gitignore`
+
+**Próximas lacunas:**
+- [x] MLflow — versionamento formal de experimentos ✅
+- [ ] MLflow UI — resolver visualização de runs na versão 3.x
+- [ ] Promoção/rollback com pytest integrado ao pipeline
+- [ ] Ingestão real INMET + GEE + SINAN
+- [ ] Dicionário de dados
+- [ ] Relatório extensionista IFMT
+- [ ] Artigo SENIC 2026
+
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

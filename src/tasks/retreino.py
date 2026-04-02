@@ -117,6 +117,39 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
         novo_modelo = lgb.LGBMRegressor(**params)
         novo_modelo.fit(X_train, y_train)
 
+        # Validação por folds — registrar no MLflow
+        from sklearn.model_selection import TimeSeriesSplit
+        metricas_folds = []
+        tscv = TimeSeriesSplit(n_splits=5)
+        for fold, (idx_train, idx_test) in enumerate(tscv.split(X), 1):
+            X_f, y_f = X.iloc[idx_train], y.iloc[idx_train]
+            X_v, y_v = X.iloc[idx_test],  y.iloc[idx_test]
+            m = lgb.LGBMRegressor(**params)
+            m.fit(X_f, y_f)
+            p = np.maximum(m.predict(X_v), 0)
+            mae_f = mean_absolute_error(y_v, p)
+            r2_f  = r2_score(y_v, p)
+            metricas_folds.append({'fold': fold, 'mae': mae_f, 'r2': r2_f})
+            logger.info(f"Fold {fold}: MAE={mae_f:.1f} | R²={r2_f:.3f}")
+
+        # Registrar folds no MLflow
+        try:
+            import mlflow
+            from src.tasks.mlflow_tracking import MLFLOW_TRACKING, EXPERIMENT_NAME
+            mlflow.set_tracking_uri(MLFLOW_TRACKING)
+            mlflow.set_experiment(EXPERIMENT_NAME)
+            with mlflow.start_run(run_name=f"retreino_{datetime.now().strftime('%Y%m%d_%H%M')}",
+                                  nested=True):
+                for mf in metricas_folds:
+                    mlflow.log_metric('mae_fold', mf['mae'], step=mf['fold'])
+                    mlflow.log_metric('r2_fold',  mf['r2'],  step=mf['fold'])
+                mlflow.log_metric('mae_medio_folds',
+                                  np.mean([m['mae'] for m in metricas_folds]))
+                mlflow.log_metric('r2_medio_folds',
+                                  np.mean([m['r2']  for m in metricas_folds]))
+        except Exception as e:
+            logger.warning(f"MLflow folds não registrado: {e}")
+
         # Avaliar novo modelo
         preds_novo = np.maximum(
             novo_modelo.predict(X_test if modelo_atual else X.tail(90)), 0

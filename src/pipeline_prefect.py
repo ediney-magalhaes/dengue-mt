@@ -207,6 +207,13 @@ def pipeline_semanal():
         logger.warning(f"Relatório não publicado: {resultado_relatorio.get('motivo')}")
     atualizar_historico_runs(resumo)
 
+    # Registrar no MLflow
+    from src.tasks.mlflow_tracking import registrar_run_mlflow
+    run_id = registrar_run_mlflow(resumo, drift=drift)
+    if run_id:
+        resumo['mlflow_run_id'] = run_id
+        logger.info(f"MLflow run_id: {run_id}")
+
     return resumo
 
 # ============================================================

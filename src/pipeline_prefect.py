@@ -196,6 +196,13 @@ def pipeline_semanal():
 
     log_pipeline_end(datetime.now().isoformat(), resultado_retreino['status'])
 
+    # Registrar no MLflow
+    from src.tasks.mlflow_tracking import registrar_run_mlflow
+    run_id = registrar_run_mlflow(resumo, drift=drift)
+    if run_id:
+        resumo['mlflow_run_id'] = run_id
+        logger.info(f"MLflow run_id: {run_id}")
+
     # Gerar e publicar relatório de execução automático
     from src.tasks.relatorio import publicar_relatorio_hf, atualizar_historico_runs
     relatorio_path = gerar_relatorio_execucao(resumo)
@@ -206,13 +213,6 @@ def pipeline_semanal():
     else:
         logger.warning(f"Relatório não publicado: {resultado_relatorio.get('motivo')}")
     atualizar_historico_runs(resumo)
-
-    # Registrar no MLflow
-    from src.tasks.mlflow_tracking import registrar_run_mlflow
-    run_id = registrar_run_mlflow(resumo, drift=drift)
-    if run_id:
-        resumo['mlflow_run_id'] = run_id
-        logger.info(f"MLflow run_id: {run_id}")
 
     return resumo
 

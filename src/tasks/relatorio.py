@@ -102,7 +102,18 @@ def gerar_relatorio_execucao(resumo: dict) -> str:
 | Snapshot | `{snapshot}` |
 | HF Hub | [Acessar]({hf_url}) |
 
-## 6. Decisão Final
+## 6. Rastreabilidade MLflow
+
+| Item | Valor |
+|---|---|
+| Run ID | `{resumo.get('mlflow_run_id', 'N/A')}` |
+| Experimento | `dengue-mt-pipeline` |
+| MAE registrado | {resumo.get('drift_mae', 'N/A')} casos/dia |
+| R² registrado | {resumo.get('drift_r2', 'N/A')} |
+| Drift score | {resumo.get('drift_score', 'N/A')} |
+| Nível drift | {resumo.get('nivel_drift', 'N/A')} |
+
+## 7. Decisão Final
 
 {decisao}
 

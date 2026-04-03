@@ -44,11 +44,11 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
         else:
             logger.warning("DATA_CORTE não definido — usando dataset completo (risco de leakage!)")
 
-        # Features — remover leakage
-        drop_cols = ['data', 'casos', 'casos_nowcast', 'municipio_id']
-        drop_cols = [c for c in drop_cols if c in df.columns]
-        X = df.drop(columns=drop_cols)
-        y = df['casos']
+        # Features — módulo canônico (fonte única de verdade)
+        from src.features.build_features import build_features, get_target, DROP_COLS
+        drop_cols = [c for c in DROP_COLS if c in df.columns]
+        X = build_features(df, data_corte=data_corte)
+        y = get_target(df, data_corte=data_corte)
 
         # Carregar modelo atual
         modelo_path = MODELS_DIR / 'lgbm_v4_producao.pkl'
@@ -94,8 +94,8 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
         # Retreinar com Rolling Window (últimos 365 dias)
         corte    = df['data'].max() - pd.Timedelta(days=365)
         df_train = df[df['data'] >= corte]
-        X_train  = df_train.drop(columns=drop_cols)
-        y_train  = df_train['casos']
+        X_train  = build_features(df_train)
+        y_train  = get_target(df_train)
 
         # Parâmetros dinâmicos — conservadores se drift crítico
         params_dinamicos = params_retreino or {}
@@ -166,8 +166,12 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
         if promover:
             joblib.dump(novo_modelo, modelo_path)
 
-            schema = {
-                'feature_names':      novo_modelo.feature_name_,
+            from src.features.build_features import atualizar_schema
+            schema = atualizar_schema(
+                novo_modelo, df_train,
+                metricas={'r2': round(r2_novo, 3), 'mae': round(mae_novo, 1)}
+            )
+            schema.update({
                 'n_features':         len(novo_modelo.feature_name_),
                 'pipeline_version':   PIPELINE_VERSION,
                 'commit_sha':         os.environ.get('GITHUB_SHA', 'local')[:8],
@@ -178,7 +182,7 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
                 'timestamp':          datetime.now().isoformat(),
                 'r2':                 round(r2_novo, 3),
                 'mae':                round(mae_novo, 1)
-            }
+            })
             with open(schema_path, 'w', encoding='utf-8') as f:
                 json.dump(schema, f, ensure_ascii=False, indent=2)
 

@@ -111,13 +111,13 @@ def previsao(dias: int = 14):
     
     if dias < 1 or dias > 28:
         raise HTTPException(status_code=400, detail="Dias deve ser entre 1 e 28")
-    
-    # Usar últimos registros como base
-    df_recente = df_gold.dropna().tail(60).copy()
-    
-    # Features do modelo
-    feature_cols = modelo.feature_name_
-    feature_cols = [c for c in feature_cols if c in df_recente.columns]
+     
+    # Features canônicas — módulo único (elimina feature drift treino/serving)
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from src.features.build_features import build_features_serving
+    X_serving = build_features_serving(df_gold, n_linhas=60)
+    feature_cols = X_serving.columns.tolist()
     
     # Previsão rolling — cada dia usa previsão anterior como lag
     previsoes = []
@@ -126,8 +126,8 @@ def previsao(dias: int = 14):
     for i in range(1, dias + 1):
         data_prev = ultima_data + timedelta(days=i)
         
-        # Usar última linha disponível como features
-        X_pred = df_recente[feature_cols].iloc[[-1]]
+        # Usar última linha disponível como features (canônico)
+        X_pred = X_serving.iloc[[-1]]
         
         casos_pred = max(float(modelo.predict(X_pred)[0]), 0)
         

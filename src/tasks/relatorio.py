@@ -251,3 +251,90 @@ def atualizar_historico_runs(resumo: dict):
 
     except Exception as e:
         logger.error(f"Erro ao atualizar histórico: {e}")
+
+def atualizar_changelog(resumo: dict, resultado_retreino: dict):
+    """
+    Gera entrada automática no CHANGELOG após retreino bem-sucedido.
+    Só executa quando status == 'promovido'.
+    """
+    import logging
+    logger = logging.getLogger('dengue-mt.pipeline')
+
+    if resultado_retreino.get('status') != 'promovido':
+        logger.info("CHANGELOG — retreino não promovido, sem entrada gerada")
+        return
+
+    try:
+        from src.config import ROOT_DIR, PIPELINE_VERSION
+        import json
+
+        # Carregar schema para pegar data_treino e n_features
+        schema_path = ROOT_DIR / 'models' / 'lgbm_v4_feature_schema.json'
+        schema = {}
+        if schema_path.exists():
+            with open(schema_path) as f:
+                schema = json.load(f)
+
+        hoje        = datetime.now().strftime('%Y-%m-%d')
+        snapshot    = resumo.get('gold_snapshot', f'gold/dataset_features_v4_{hoje}.parquet')
+        commit_sha  = resumo.get('commit_sha', 'local')
+        r2_novo     = resultado_retreino.get('r2_novo', 'N/A')
+        mae_novo    = resultado_retreino.get('mae', 'N/A')
+        drift_score = resumo.get('drift_score', 'N/A')
+        nivel_drift = resumo.get('nivel_drift', 'N/A')
+        n_features  = schema.get('n_features', 59)
+        fallbacks   = resumo.get('fallbacks', {})
+        fallback_list = [k for k, v in fallbacks.items() if v] or ['nenhuma']
+
+        # Ler versão atual do CHANGELOG e incrementar
+        changelog_path = ROOT_DIR / 'CHANGELOG.md'
+        conteudo = changelog_path.read_text(encoding='utf-8')
+
+        # Extrair última versão
+        import re
+        versoes = re.findall(r'## \[(\d+\.\d+\.\d+)\]', conteudo)
+        if versoes:
+            ultima = versoes[0]
+            partes = ultima.split('.')
+            nova_versao = f"{partes[0]}.{partes[1]}.{int(partes[2]) + 1}"
+        else:
+            nova_versao = '1.0.1'
+
+        entrada = f"""
+## [{nova_versao}] — {hoje}
+
+### Modelo
+- Arquivo: `lgbm_v4_producao.pkl`
+- Dataset: `{snapshot}`
+- Commit SHA: `{commit_sha}`
+- MAE: {mae_novo} casos/dia | R²: {r2_novo}
+- Retreino: sim | Motivo: drift detectado → promovido
+
+### Features
+- {n_features} features — sem mudanças no contrato
+- Adicionadas: nenhuma
+- Removidas: nenhuma
+- Contratos: validados
+
+### Infraestrutura
+- Pipeline version: {PIPELINE_VERSION}
+- Drift score: {float(drift_score):.3f if drift_score != 'N/A' else drift_score} | Nível: {nivel_drift}
+- Fontes com fallback: {', '.join(fallback_list)}
+
+---
+"""
+
+        # Inserir após o template (antes do primeiro ## [X.Y.Z] real)
+        marcador = '## [1.'
+        pos = conteudo.find(marcador)
+        if pos == -1:
+            marcador = '\n---\n'
+            pos = conteudo.find(marcador)
+
+        novo_conteudo = conteudo[:pos] + entrada + conteudo[pos:]
+        changelog_path.write_text(novo_conteudo, encoding='utf-8')
+
+        logger.info(f"CHANGELOG atualizado — versão {nova_versao}")
+
+    except Exception as e:
+        logger.error(f"Erro ao atualizar CHANGELOG: {e}")

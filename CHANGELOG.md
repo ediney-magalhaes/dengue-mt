@@ -3,6 +3,56 @@
 Todas as mudanças notáveis do projeto são documentadas aqui.
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
+## Template para releases futuras
+```markdown
+## [X.Y.Z] — YYYY-MM-DD
+
+### Modelo
+- Arquivo: `lgbm_v4_producao.pkl`
+- Dataset: `gold/dataset_features_v4_YYYY-MM-DD.parquet`
+- Commit SHA: `xxxxxxxx`
+- MAE: X.X casos/dia | R²: X.XXX | sMAPE: XX.X%
+- Retreino: [sim/não] | Motivo: [drift/manual/agendado]
+
+### Features
+- N features — [sem mudanças / mudanças descritas abaixo]
+- Adicionadas: [lista ou "nenhuma"]
+- Removidas: [lista ou "nenhuma"]
+- Contratos: [validados/alterados]
+
+### Infraestrutura
+- Pipeline version: X.X.X
+- Drift score: X.XXX | Nível: [normal/moderado/crítico]
+- Fontes com fallback: [lista ou "nenhuma"]
+```
+
+---
+
+## [1.3.0] — 2026-04-03
+
+### Modelo
+- Arquivo: `lgbm_v4_producao.pkl`
+- Dataset: `gold/dataset_features_v4_2026-03-31.parquet` (último snapshot automático)
+- Commit SHA: `ccffb776`
+- MAE: 2.41 casos/dia | R²: 0.987 (90d recente) | R²: 0.820 (TimeSeriesSplit oficial)
+- Retreino: não | Motivo: modelo estável — drift score 0.205 (normal)
+
+### Features
+- 59 features — sem mudanças no contrato
+- Adicionadas: nenhuma
+- Removidas: nenhuma
+- Contratos: validados — 13/13 testes pytest + Pandera
+
+### Infraestrutura
+- Pipeline version: 1.0.1-dev
+- MLflow tracking — tags, params, metrics, artifacts, run_id no relatório
+- Métricas por fold TimeSeriesSplit registradas no MLflow
+- Relatórios publicados no HF Hub — snapshot datado + latest
+- Aba Monitoramento no dashboard — histórico de runs
+- Histórico de runs acumulado em `reports/historico_runs.parquet`
+- Drift score: 0.205 | Nível: normal
+- Fontes com fallback: nenhuma
+
 ---
 
 ## [1.2.0] — 2026-03-30

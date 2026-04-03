@@ -322,10 +322,98 @@ Pasta `data/cache/` com arquivo por fonte + `cache_metadata.json`.
 
 ---
 
+## MLflow Tracking — Versionamento Formal de Experimentos (item 10)
+
+**Data:** 02/04/2026
+
+### Decisão: MLflow local com SQLite + artefatos no HF Hub
+
+**Problema:** Não havia rastreabilidade formal de experimentos — impossível comparar runs ao longo do tempo.
+
+**Implementação:** `src/tasks/mlflow_tracking.py`
+
+**Registrado em cada run:**
+- Tags: `dataset_version`, `commit_sha`, `data_corte`, `run_env`, `nivel_drift`, `retreino`
+- Params: `atraso_dias`, `modelo`, `n_features`, `mae_limiar`, `r2_minimo`, `drift_normal`, `drift_critico`
+- Metrics: `mae_recente`, `r2_recente`, `drift_score`, `fallbacks_ativos`, status por fonte
+- Metrics por fold: `mae_fold`, `r2_fold` por step (TimeSeriesSplit 5 folds — só no retreino)
+- Artifacts: `lgbm_v4_producao.pkl`, `lgbm_v4_feature_schema.json`, `run_metadata.json`, relatório MD
+
+**Backend:** SQLite local (`mlflow.db`) — custo zero, sem servidor
+**run_id** gravado no relatório de execução (seção 6 — Rastreabilidade)
+
+---
+
+## CHANGELOG Automático no Retreino (item 11)
+
+**Data:** 03/04/2026
+
+### Decisão: gerar entrada no CHANGELOG automaticamente após retreino promovido
+
+**Problema:** CHANGELOG era atualizado manualmente — risco de desatualização.
+
+**Implementação:** `atualizar_changelog()` em `src/tasks/relatorio.py`
+
+**Comportamento:**
+- Só executa quando `resultado_retreino['status'] == 'promovido'`
+- Incrementa automaticamente a versão semântica (patch)
+- Referencia snapshot datado do dataset, commit SHA, MAE, R²
+- Inserido antes do último release no CHANGELOG
+
+---
+
+## Dicionário de Dados (item 12)
+
+**Data:** 03/04/2026
+
+### Decisão: documentar todas as variáveis com metadados formais
+
+**Implementação:** `scripts/gerar_dicionario_dados.py`
+
+**Gerado automaticamente:**
+- `reports/data_dictionary.md` — legível no GitHub/HF Hub
+- `reports/data_dictionary.csv` — abre no Excel para filtragem
+
+**Cobertura:**
+- 65 variáveis documentadas (59 no modelo + 6 fora)
+- Campos: feature, descrição, fonte, frequência, lag_dias, imputação, unidade, intervalo_válido, no_modelo, motivo
+- Agrupado por fonte de dados
+
+**Justificativa:** Requisito obrigatório para publicação acadêmica — reviewers exigem descrição formal de todas as variáveis.
+
+---
+
+## Módulo Canônico de Features — build_features (item 13)
+
+**Data:** 03/04/2026
+
+### Decisão: fonte única de verdade para construção de features
+
+**Problema:** Feature drift silencioso entre treino e serving — API podia usar features diferentes do modelo treinado.
+
+**Implementação:** `src/features/build_features.py`
+
+**Funções principais:**
+- `build_features(df, data_corte, validar)` — usado no treino/retreino
+- `build_features_serving(df, n_linhas)` — usado na API
+- `get_target(df, data_corte)` — target alinhado com X
+- `atualizar_schema(modelo, df_treino, metricas)` — atualiza schema após promoção
+- `_validar_features(df, feature_names)` — detecta feature drift com erro explícito
+
+**Regra:** qualquer feature nova entra em `build_features.py` primeiro e automaticamente atualiza o schema.
+
+**Integração:**
+- `src/tasks/retreino.py` usa `build_features()` e `get_target()`
+- `app/api.py` usa `build_features_serving()`
+- Schema atualizado via `atualizar_schema()` após promoção
+
+**Referência:** Feature Store pattern — MLOps best practices (ScienceDirect 2025)
+
+---
+
 ## Próximas decisões pendentes
 
-- [ ] MLflow — versionamento formal de experimentos
-- [ ] Ingestão real INMET + GEE + SINAN (Semana 10)
-- [ ] Feature Store lógica — serving consistente
-- [ ] Dicionário de dados formal
+- [ ] Ingestão real INMET + GEE + SINAN
 - [ ] Seed global e ambiente fixo para reprodutibilidade total
+- [ ] Relatório extensionista IFMT
+- [ ] Artigo SENIC 2026

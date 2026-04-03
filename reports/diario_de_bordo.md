@@ -823,8 +823,8 @@ Todo domingo 06h (automático — GitHub Actions):
 
 **Próximas lacunas:**
 - [x] Publicação de relatórios no HF Hub
-- [x] MLflow — versionamento formal de experimentos **parcial (UI pendente)**
-- [ ] MLflow UI — resolver visualização de runs na versão 3.x
+- [x] MLflow — versionamento formal de experimentos
+- [x] Aba Monitoramento no dashboard
 - [ ] Promoção/rollback com pytest integrado ao pipeline
 - [ ] Ingestão real INMET + GEE + SINAN
 - [ ] Dicionário de dados
@@ -842,11 +842,59 @@ Todo domingo 06h (automático — GitHub Actions):
 - `mlflow.db` e `mlruns/` adicionados ao `.gitignore`
 
 **Próximas lacunas:**
-- [x] MLflow — versionamento formal de experimentos ✅
-- [ ] MLflow UI — resolver visualização de runs na versão 3.x
+- [x] MLflow — versionamento formal de experimentos
+- [x] Métricas por fold TimeSeriesSplit
+- [ ] CHANGELOG automático
+- [ ] Dicionário de dados
+- [ ] Módulo canônico build_features
 - [ ] Promoção/rollback com pytest integrado ao pipeline
 - [ ] Ingestão real INMET + GEE + SINAN
-- [ ] Dicionário de dados
+- [ ] Relatório extensionista IFMT
+- [ ] Artigo SENIC 2026
+
+
+## 📅 Sessão 03/04/2026 — CHANGELOG + Dicionário de Dados + build_features
+
+**O que foi feito:**
+
+**MLflow run_id no relatório:**
+- MLflow agora roda antes do relatório — run_id aparece na seção 6
+- Ordem no pipeline corrigida: MLflow → relatório → HF Hub
+
+**CHANGELOG automático:**
+- `atualizar_changelog()` em `src/tasks/relatorio.py`
+- Gera entrada automaticamente após retreino promovido
+- Incrementa versão semântica (patch) automaticamente
+- Template formal adicionado ao CHANGELOG.md
+- v1.3.0 documentada manualmente
+
+**Dicionário de dados:**
+- `scripts/gerar_dicionario_dados.py`
+- `reports/data_dictionary.md` — 65 variáveis documentadas
+- `reports/data_dictionary.csv` — abre no Excel
+- Agrupado por fonte: INMET, NASA, GEE, ONI, Trends, SINAN, calendário
+
+**Módulo canônico build_features:**
+- `src/features/build_features.py` — fonte única de verdade
+- `build_features()` usado no treino/retreino
+- `build_features_serving()` integrado na API
+- `get_target()` alinhado com build_features()
+- `atualizar_schema()` centralizado no módulo
+- Feature drift treino/serving eliminado
+
+**Documentação atualizada:**
+- CHANGELOG.md — v1.3.0 + template + CHANGELOG automático
+- decisoes_modelagem.md — MLflow, CHANGELOG, dicionário, build_features
+- ARCHITECTURE.md — stack atualizada + roadmap v1.3/v1.4
+- README.md — qualidade pipeline v1.3 + 5 abas dashboard
+
+**Próximas lacunas:**
+- [x] MLflow — versionamento formal de experimentos
+- [x] CHANGELOG automático
+- [x] Dicionário de dados
+- [x] Módulo canônico build_features
+- [ ] Promoção/rollback com pytest integrado ao pipeline
+- [ ] Ingestão real INMET + GEE + SINAN
 - [ ] Relatório extensionista IFMT
 - [ ] Artigo SENIC 2026
 

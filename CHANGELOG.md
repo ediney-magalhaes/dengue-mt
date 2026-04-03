@@ -43,13 +43,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Removidas: nenhuma
 - Contratos: validados — 13/13 testes pytest + Pandera
 
+### Adicionado
+- MLflow tracking — tags, params, metrics, artifacts, run_id no relatório
+- Métricas por fold TimeSeriesSplit registradas no MLflow (retreino)
+- Relatórios publicados no HF Hub — snapshot datado + `execucao_latest.md`
+- Histórico de runs acumulado em `reports/historico_runs.parquet`
+- Aba Monitoramento no dashboard — gráficos históricos de drift, MAE, R²
+- CHANGELOG automático gerado a cada retreino promovido
+- Dicionário de dados — `reports/data_dictionary.md` + `data_dictionary.csv`
+- 65 variáveis documentadas (59 no modelo + 6 fora)
+- Módulo canônico `src/features/build_features.py` — elimina feature drift treino/serving
+- `build_features_serving()` integrado na API — mesma lógica do treino
+- `atualizar_schema()` centralizado no módulo de features
+- MLflow run_id na seção 6 do relatório de execução
+
 ### Infraestrutura
 - Pipeline version: 1.0.1-dev
-- MLflow tracking — tags, params, metrics, artifacts, run_id no relatório
-- Métricas por fold TimeSeriesSplit registradas no MLflow
-- Relatórios publicados no HF Hub — snapshot datado + latest
-- Aba Monitoramento no dashboard — histórico de runs
-- Histórico de runs acumulado em `reports/historico_runs.parquet`
+- MLflow backend: SQLite local (`mlflow.db`)
 - Drift score: 0.205 | Nível: normal
 - Fontes com fallback: nenhuma
 

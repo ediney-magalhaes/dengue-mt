@@ -1,0 +1,66 @@
+﻿feature,descricao,fonte,frequencia,lag_dias,imputacao,unidade,intervalo,no_modelo,motivo
+temp_media,Temperatura média diária,INMET A901,diário,0,interpolação linear,°C,"[10, 45]",sim,feature preditiva selecionada
+temp_max,Temperatura máxima diária,INMET A901,diário,0,interpolação linear,°C,"[15, 50]",sim,feature preditiva selecionada
+temp_min,Temperatura mínima diária,INMET A901,diário,0,interpolação linear,°C,"[5, 40]",sim,feature preditiva selecionada
+precipitacao_total,Precipitação total diária,INMET A901,diário,0,zero (sem chuva),mm,"[0, 200]",sim,feature preditiva selecionada
+umidade_media,Umidade relativa média diária,INMET A901,diário,0,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+umidade_max,Umidade relativa máxima diária,INMET A901,diário,0,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+umidade_min,Umidade relativa mínima diária,INMET A901,diário,0,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+amplitude_termica,Amplitude térmica diária (max-min),INMET A901,diário,0,calculado,°C,"[0, 30]",sim,feature preditiva selecionada
+dias_sem_chuva,Dias consecutivos sem precipitação,INMET A901,diário,0,calculado,dias,"[0, 365]",sim,feature preditiva selecionada
+radiacao_mj,Radiação solar superficial diária,NASA POWER API,diário,0,interpolação linear,MJ/m²,"[0, 35]",sim,feature preditiva selecionada
+ndvi,Índice de vegetação (Sentinel-2+MODIS blend),GEE Sentinel-2/MODIS,mensal,0,média sazonal,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+ndwi,Índice de água (Sentinel-2+MODIS blend),GEE Sentinel-2/MODIS,mensal,0,média sazonal,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+ndbi_gee,Índice de urbanização (Sentinel-2),GEE Sentinel-2,mensal,0,interpolação linear,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+oni_index,Índice Oceânico El Niño (ENSO),NOAA ONI,mensal,0,forward fill,°C,"[-3, 3]",sim,feature preditiva selecionada
+fase_enso_num,Fase ENSO codificada numericamente,NOAA ONI,mensal,0,forward fill,"{-1,0,1}","[-1, 1]",sim,feature preditiva selecionada
+trends_lag_7d,"Interesse ""dengue"" Google Trends lag 7d",Google Trends,semanal,7,forward fill,"[0,100]","[0, 100]",sim,feature preditiva selecionada
+trends_lag_14d,"Interesse ""dengue"" Google Trends lag 14d",Google Trends,semanal,14,forward fill,"[0,100]","[0, 100]",sim,feature preditiva selecionada
+trends_lag_21d,"Interesse ""dengue"" Google Trends lag 21d",Google Trends,semanal,21,forward fill,"[0,100]","[0, 100]",sim,feature preditiva selecionada
+casos_lag_7d,Casos confirmados lag 7 dias,SINAN/DATASUS,diário,7,zero,casos,"[0, 1000]",sim,feature preditiva selecionada
+casos_lag_14d,Casos confirmados lag 14 dias,SINAN/DATASUS,diário,14,zero,casos,"[0, 1000]",sim,feature preditiva selecionada
+casos_lag_21d,Casos confirmados lag 21 dias,SINAN/DATASUS,diário,21,zero,casos,"[0, 1000]",sim,feature preditiva selecionada
+casos_lag_28d,Casos confirmados lag 28 dias,SINAN/DATASUS,diário,28,zero,casos,"[0, 1000]",sim,feature preditiva selecionada
+casos_mm_7d,Média móvel casos 7 dias,SINAN/DATASUS,diário,7,zero,casos,"[0, 1000]",sim,feature preditiva selecionada
+casos_mm_14d,Média móvel casos 14 dias,SINAN/DATASUS,diário,14,zero,casos,"[0, 1000]",sim,feature preditiva selecionada
+casos_mm_28d,Média móvel casos 28 dias,SINAN/DATASUS,diário,28,zero,casos,"[0, 1000]",sim,feature preditiva selecionada
+casos_acum_ano,Casos acumulados no ano corrente,SINAN/DATASUS,diário,0,calculado,casos,"[0, 50000]",sim,feature preditiva selecionada
+ano,Ano calendário,calendário,diário,0,N/A,ano,"[2018, 2030]",sim,feature preditiva selecionada
+mes,Mês calendário (1-12),calendário,diário,0,N/A,mês,"[1, 12]",sim,feature preditiva selecionada
+semana_ano,Semana epidemiológica (1-53),calendário,diário,0,N/A,semana,"[1, 53]",sim,feature preditiva selecionada
+dia_ano,Dia do ano (1-366),calendário,diário,0,N/A,dia,"[1, 366]",sim,feature preditiva selecionada
+trimestre,Trimestre do ano (1-4),calendário,diário,0,N/A,trim,"[1, 4]",sim,feature preditiva selecionada
+mes_seno,Codificação cíclica seno do mês,calendário,diário,0,calculado,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+mes_cosseno,Codificação cíclica cosseno do mês,calendário,diário,0,calculado,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+semana_seno,Codificação cíclica seno da semana,calendário,diário,0,calculado,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+semana_cosseno,Codificação cíclica cosseno da semana,calendário,diário,0,calculado,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+anos_desde_pico,Anos desde o último pico epidêmico,SINAN/DATASUS,diário,0,calculado,anos,"[0, 10]",sim,feature preditiva selecionada
+ciclo_epidemico,Indicador de ano de pico (0/1),SINAN/DATASUS,diário,0,calculado,"{0,1}","[0, 1]",sim,feature preditiva selecionada
+precip_lag_28d,Precipitação total lag 28 dias,INMET A901,diário,28,zero,mm,"[0, 200]",sim,feature preditiva selecionada
+precip_lag_35d,Precipitação total lag 35 dias,INMET A901,diário,35,zero,mm,"[0, 200]",sim,feature preditiva selecionada
+precip_lag_42d,Precipitação total lag 42 dias,INMET A901,diário,42,zero,mm,"[0, 200]",sim,feature preditiva selecionada
+umidade_lag_28d,Umidade relativa média lag 28 dias,INMET A901,diário,28,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+umidade_lag_35d,Umidade relativa média lag 35 dias,INMET A901,diário,35,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+umidade_lag_42d,Umidade relativa média lag 42 dias,INMET A901,diário,42,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+temp_lag_28d,Temperatura média lag 28 dias,INMET A901,diário,28,interpolação linear,°C,"[10, 45]",sim,feature preditiva selecionada
+temp_lag_35d,Temperatura média lag 35 dias,INMET A901,diário,35,interpolação linear,°C,"[10, 45]",sim,feature preditiva selecionada
+temp_lag_42d,Temperatura média lag 42 dias,INMET A901,diário,42,interpolação linear,°C,"[10, 45]",sim,feature preditiva selecionada
+radiacao_lag_28d,Radiação solar lag 28 dias,NASA POWER API,diário,28,interpolação linear,MJ/m²,"[0, 35]",sim,feature preditiva selecionada
+precip_mm_7d,Média móvel precipitação 7 dias,INMET A901,diário,7,zero,mm,"[0, 200]",sim,feature preditiva selecionada
+precip_mm_14d,Média móvel precipitação 14 dias,INMET A901,diário,14,zero,mm,"[0, 200]",sim,feature preditiva selecionada
+precip_mm_28d,Média móvel precipitação 28 dias,INMET A901,diário,28,zero,mm,"[0, 200]",sim,feature preditiva selecionada
+umidade_mm_7d,Média móvel umidade 7 dias,INMET A901,diário,7,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+umidade_mm_14d,Média móvel umidade 14 dias,INMET A901,diário,14,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+umidade_mm_28d,Média móvel umidade 28 dias,INMET A901,diário,28,interpolação linear,%,"[10, 100]",sim,feature preditiva selecionada
+radiacao_mm_14d,Média móvel radiação 14 dias,NASA POWER API,diário,14,interpolação linear,MJ/m²,"[0, 35]",sim,feature preditiva selecionada
+precip_acum_7d,Precipitação acumulada 7 dias,INMET A901,diário,7,zero,mm,"[0, 500]",sim,feature preditiva selecionada
+precip_acum_14d,Precipitação acumulada 14 dias,INMET A901,diário,14,zero,mm,"[0, 800]",sim,feature preditiva selecionada
+precip_acum_28d,Precipitação acumulada 28 dias,INMET A901,diário,28,zero,mm,"[0, 1500]",sim,feature preditiva selecionada
+ndbi_lag_30d,Índice de urbanização lag 30 dias,GEE Sentinel-2,mensal,30,interpolação linear,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+ndbi_lag_60d,Índice de urbanização lag 60 dias,GEE Sentinel-2,mensal,60,interpolação linear,"[-1,1]","[-1, 1]",sim,feature preditiva selecionada
+casos,Casos confirmados de dengue (TARGET),SINAN/DATASUS,diário,0,N/A,casos,"[0, 1000]",não,variável alvo (target)
+casos_nowcast,Casos corrigidos pelo fator nowcasting,SINAN/DATASUS,diário,0,calculado,casos,"[0, 3000]",não,derivado do target
+municipio_id,Identificador do município,IBGE,estático,0,N/A,código,N/A,não,identificador — sem valor preditivo
+fator_nowcasting,Fator de correção subnotificação SINAN,SINAN/DATASUS,semanal,0,média histórica,fator,"[1, 3]",não,"usado para corrigir target, não como feature"
+casos_por_100k,Incidência por 100k habitantes,SINAN/IBGE,diário,0,calculado,casos/100k,"[0, 500]",não,derivado do target
+casos_nowcast_por_100k,Incidência nowcast por 100k,SINAN/IBGE,diário,0,calculado,casos/100k,"[0, 1500]",não,derivado do target nowcast

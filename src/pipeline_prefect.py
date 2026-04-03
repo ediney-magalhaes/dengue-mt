@@ -110,6 +110,11 @@ def pipeline_semanal():
         obs_logger.info("RETREINO_INICIO | motivo=drift_detectado")
         t0 = time.time()
         resultado_retreino = retreinar_modelo(data_corte=data_corte, params_retreino=drift.get('params_retreino'))
+
+        # Atualizar CHANGELOG se modelo foi promovido
+        from src.tasks.relatorio import atualizar_changelog
+        atualizar_changelog(resumo, resultado_retreino)
+
         log_etapa('retreinar_modelo', t0, resultado_retreino)
         obs_logger.info(
             f"RETREINO_DECISAO | status={resultado_retreino['status']} "

@@ -65,6 +65,11 @@ dataset_features_v4.parquet — 2.182 dias × 59 features
 | Observabilidade | logging estruturado | reports/pipeline.log |
 | Corte temporal | calcular_data_corte() | Anti-leakage operacional |
 | Rastreabilidade | run_metadata.json | Artefato por execução |
+| MLflow tracking | SQLite local (mlflow.db) | Versionamento formal de experimentos |
+| Feature Store | src/features/build_features.py | Elimina feature drift treino/serving |
+| Dicionário de dados | reports/data_dictionary.md+csv | Documentação formal para artigo |
+| Relatórios HF Hub | reports/execucao_latest.md | Auditoria pública por execução |
+| CHANGELOG automático | src/tasks/relatorio.py | Versionamento semântico no retreino |
 
 > **Custo total de infraestrutura: R$ 0,00**
 
@@ -199,11 +204,19 @@ v1.2 — concluída 30/03/2026
 - Primeiro run automático validado — 31/03/2026 00:48 UTC
 - Organização do repositório — scripts/historico/
 
-v1.3 — próxima
+v1.3 — concluída 03/04/2026
+- MLflow tracking — SQLite local, tags, params, metrics, artifacts
+- Métricas por fold TimeSeriesSplit no MLflow
+- CHANGELOG automático no retreino
+- Dicionário de dados — 65 variáveis documentadas (MD + CSV)
+- Módulo canônico build_features — elimina feature drift treino/serving
+- Relatórios publicados no HF Hub — snapshot + latest
+- Aba Monitoramento no dashboard
+
+v1.4 — próxima
 - Ingestão real INMET + GEE + SINAN
-- MLflow — versionamento formal
-- Dicionário de dados
 - Relatório extensionista IFMT
+- Artigo SENIC 2026
 
 v2.0 — futuro
 - Score risco v3 com previsão integrada

@@ -1,314 +1,214 @@
 # ============================================================
-# Dengue MT — Tasks: Ingestão de Dados
+# Dengue MT — Tasks: Ingestão de Dados (Orquestração)
 # ============================================================
-# Fontes reais:
-# - InfoDengue API — casos + nowcasting + clima semanal
-# - NASA POWER API — radiação solar diária
-# - NOAA ONI — índice El Niño/La Niña
-# - Google Trends — infoveillância digital
+# Responsabilidade: orquestrar Bronze → Silver → Cache
+# Lógica de negócio em src/ingestion/
+#
+# Arquitetura Medalhão:
+# API → Bronze (bruto) → Silver (limpo) → Cache → Gold
 # ============================================================
 
 from prefect import task, get_run_logger
 from datetime import datetime, timedelta
 from src.config import DATA_DIR
-import pandas as pd
-import requests
-
-
-# ============================================================
-# Geocodes dos municípios
-# ============================================================
-GEOCODES = {
-    'cuiaba':       '5103403',
-    'varzea_grande': '5108402'
-}
 
 
 @task(name="ingest_inmet", retries=3, retry_delay_seconds=60)
 def ingerir_inmet(data_corte=None):
-    """
-    Ingestão de dados climáticos e epidemiológicos via InfoDengue API.
-    Substitui INMET para dados novos (2025+) — retorna série completa
-    combinando Silver histórico (2018-2024) + InfoDengue (2025+).
-    
-    Referência: Codeco et al. 2018 — InfoDengue como sistema de alerta precoce
-    """
+    """InfoDengue API → Bronze → Silver → Cache."""
     logger = get_run_logger()
-    logger.info("Iniciando ingestão InfoDengue (casos + clima)...")
+    logger.info("Iniciando ingestão InfoDengue — Bronze → Silver...")
 
     try:
+        from src.ingestion.infodengue import (
+            ingerir_bronze, bronze_para_silver,
+            salvar_silver, carregar_silver_fallback
+        )
         from src.tasks.cache import salvar_cache
-        import numpy as np
 
-        hoje = datetime.now()
-        ano_atual = hoje.year
-        ano_inicio = 2025  # InfoDengue para dados novos
-
-        dfs = []
-
-        # Baixar dados por município e por ano
-        for municipio, geocode in GEOCODES.items():
-            for ano in range(ano_inicio, ano_atual + 1):
-                url = 'https://info.dengue.mat.br/api/alertcity'
-                params = {
-                    'geocode':  geocode,
-                    'disease':  'dengue',
-                    'format':   'json',
-                    'ew_start': 1,
-                    'ew_end':   53,
-                    'ey_start': ano,
-                    'ey_end':   ano
-                }
-                r = requests.get(url, params=params, timeout=30)
-                if r.status_code != 200:
-                    logger.warning(f"InfoDengue {municipio} {ano}: status {r.status_code}")
-                    continue
-
-                dados = r.json()
-                if not dados:
-                    continue
-
-                df_ano = pd.DataFrame(dados)
-                df_ano['municipio'] = municipio
-                df_ano['geocode']   = geocode
-                dfs.append(df_ano)
-                logger.info(f"InfoDengue {municipio} {ano}: {len(dados)} semanas")
-
-        if not dfs:
-            raise ValueError("InfoDengue sem dados — usando fallback")
-
-        df_info = pd.concat(dfs, ignore_index=True)
-
-        # Converter timestamp para data
-        df_info['data'] = pd.to_datetime(df_info['data_iniSE'], unit='ms')
-
-        # Renomear colunas para padrão do projeto
-        df_info = df_info.rename(columns={
-            'casos':    'casos_confirmados',
-            'casos_est': 'casos_nowcast',
-            'tempmed':  'temp_media',
-            'tempmin':  'temp_min',
-            'tempmax':  'temp_max',
-            'umidmed':  'umidade_media',
-            'umidmin':  'umidade_min',
-            'umidmax':  'umidade_max',
+        df_bronze = ingerir_bronze(ano_inicio=2025, data_corte=data_corte)
+        df_silver = bronze_para_silver(df_bronze, data_corte=data_corte)
+        salvar_silver(df_silver)
+        salvar_cache('inmet', df_silver, extra={
+            'ultima_data': str(df_silver['data'].max().date()),
+            'fonte':       'infodengue_silver',
+            'camada':      'silver'
         })
 
-        # Converter para float
-        for col in ['temp_media', 'temp_min', 'temp_max',
-                    'umidade_media', 'umidade_min', 'umidade_max']:
-            if col in df_info.columns:
-                df_info[col] = pd.to_numeric(df_info[col], errors='coerce')
-
-        # Aplicar corte temporal
-        if data_corte:
-            df_info = df_info[df_info['data'] <= pd.Timestamp(data_corte)]
-
-        # Carregar Silver histórico (2018-2024)
-        silver_path = DATA_DIR / 'silver' / 'inmet' / 'inmet_cuiaba_2018_2024.parquet'
-        if silver_path.exists():
-            df_hist = pd.read_parquet(silver_path)
-            df_hist['data'] = pd.to_datetime(df_hist['data'] if 'data' in df_hist.columns
-                                              else df_hist.iloc[:, 0])
-            # Combinar histórico + novos dados
-            logger.info(f"Silver histórico: {len(df_hist)} registros (2018-2024)")
-            logger.info(f"InfoDengue novos: {len(df_info)} registros (2025+)")
-
-        # Salvar cache com dados novos
-        salvar_cache('inmet', df_info, extra={
-            'ultima_data':  str(df_info['data'].max().date()),
-            'n_municipios': len(GEOCODES),
-            'fonte':        'infodengue_api'
-        })
-
-        ultima_data = df_info['data'].max()
-        logger.info(f"InfoDengue — última semana: {ultima_data.date()}")
+        logger.info(f"InfoDengue Silver — última semana: {df_silver['data'].max().date()}")
         return {
             'status':      'ok',
-            'ultima_data': str(ultima_data.date()),
+            'ultima_data': str(df_silver['data'].max().date()),
             'fonte':       'infodengue',
-            'n_registros': len(df_info),
+            'n_registros': len(df_silver),
             'fallback':    False
         }
 
     except Exception as e:
         logger.error(f"InfoDengue erro: {e}")
+        return _fallback_inmet(logger)
 
-        # Fallback — usar cache local
-        from src.tasks.cache import carregar_cache
-        df_fallback = carregar_cache('inmet')
-        if df_fallback is not None:
-            logger.warning("InfoDengue — usando cache local como fallback")
-            return {'status': 'ok', 'fonte': 'inmet_cache', 'fallback': True}
 
-        # Fallback final — Silver histórico
-        silver_path = DATA_DIR / 'silver' / 'inmet' / 'inmet_cuiaba_2018_2024.parquet'
-        if silver_path.exists():
-            logger.warning("InfoDengue — usando Silver histórico como fallback")
-            return {'status': 'ok', 'fonte': 'inmet_silver', 'fallback': True}
+def _fallback_inmet(logger):
+    from src.ingestion.infodengue import carregar_silver_fallback
+    from src.tasks.cache import carregar_cache, salvar_cache
 
-        return {'status': 'pendente', 'fonte': 'inmet', 'fallback': False}
+    df = carregar_silver_fallback()
+    if df is not None:
+        salvar_cache('inmet', df)
+        return {'status': 'ok', 'fonte': 'infodengue_silver', 'fallback': True}
+
+    df = carregar_cache('inmet')
+    if df is not None:
+        return {'status': 'ok', 'fonte': 'inmet_cache', 'fallback': True}
+
+    silver_hist = DATA_DIR / 'silver' / 'inmet' / 'inmet_cuiaba_2018_2024.parquet'
+    if silver_hist.exists():
+        return {'status': 'ok', 'fonte': 'inmet_silver_hist', 'fallback': True}
+
+    return {'status': 'pendente', 'fonte': 'inmet', 'fallback': False}
 
 
 @task(name="ingest_nasa_power", retries=3, retry_delay_seconds=60)
 def ingerir_nasa_power(data_corte=None):
-    """
-    Baixa série completa de radiação solar NASA POWER.
-    Cobre período 2025+ para complementar Silver histórico.
-    Atraso operacional: 14 dias (verificado empiricamente 27/03/2026).
-    """
+    """NASA POWER API → Bronze → Silver → Cache."""
     logger = get_run_logger()
-    logger.info("Iniciando ingestão NASA POWER...")
+    logger.info("Iniciando ingestão NASA POWER — Bronze → Silver...")
 
     if data_corte:
-        logger.info(f"Corte temporal aplicado: até {data_corte.strftime('%Y-%m-%d')}")
+        logger.info(f"Corte temporal: até {data_corte.strftime('%Y-%m-%d')}")
 
     try:
+        from src.ingestion.nasa_power import (
+            ingerir_bronze, bronze_para_silver,
+            salvar_silver, carregar_silver_fallback
+        )
         from src.tasks.cache import salvar_cache
 
-        # Data de início: 01/01/2025 (dados históricos já no Silver)
         data_inicio = datetime(2025, 1, 1)
         data_fim    = data_corte if data_corte else (datetime.now() - timedelta(days=14))
-
         if data_fim < data_inicio:
             data_fim = data_inicio
 
-        url = "https://power.larc.nasa.gov/api/temporal/daily/point"
-        params = {
-            'parameters': 'ALLSKY_SFC_SW_DWN,T2M,T2M_MAX,T2M_MIN,PRECTOTCORR,RH2M',
-            'community':  'RE',
-            'longitude':  -56.1,
-            'latitude':   -15.6,
-            'start':      data_inicio.strftime('%Y%m%d'),
-            'end':        data_fim.strftime('%Y%m%d'),
-            'format':     'JSON'
-        }
+        df_bronze = ingerir_bronze(data_inicio, data_fim)
+        df_silver = bronze_para_silver(df_bronze)
+        salvar_silver(df_silver)
+        salvar_cache('nasa_power', df_silver)
 
-        r = requests.get(url, params=params, timeout=60)
-        if r.status_code != 200:
-            raise ValueError(f"NASA POWER status: {r.status_code}")
-
-        data_json = r.json()
-        parametros = data_json['properties']['parameter']
-
-        # Construir DataFrame
-        datas  = list(parametros['ALLSKY_SFC_SW_DWN'].keys())
-        df_nasa = pd.DataFrame({
-            'data':                datas,
-            'radiacao_mj':         list(parametros['ALLSKY_SFC_SW_DWN'].values()),
-            'temp_media_nasa':     list(parametros['T2M'].values()),
-            'temp_max_nasa':       list(parametros['T2M_MAX'].values()),
-            'temp_min_nasa':       list(parametros['T2M_MIN'].values()),
-            'precipitacao_nasa':   list(parametros['PRECTOTCORR'].values()),
-            'umidade_nasa':        list(parametros['RH2M'].values()),
-        })
-
-        df_nasa['data'] = pd.to_datetime(df_nasa['data'], format='%Y%m%d')
-
-        # Remover valores inválidos (-999)
-        for col in df_nasa.columns:
-            if col != 'data':
-                df_nasa[col] = df_nasa[col].replace(-999, pd.NA)
-
-        # Remover linhas com radiação inválida
-        df_nasa = df_nasa[df_nasa['radiacao_mj'].notna()]
-
-        salvar_cache('nasa_power', df_nasa)
-
-        logger.info(f"NASA POWER — {len(df_nasa)} dias (2025+)")
+        logger.info(f"NASA POWER Silver — {len(df_silver)} dias")
         return {
             'status':      'ok',
-            'n_registros': len(df_nasa),
+            'n_registros': len(df_silver),
             'fonte':       'nasa_power',
             'fallback':    False
         }
 
     except Exception as e:
         logger.error(f"NASA POWER erro: {e}")
+        return _fallback_nasa(logger)
 
-        # Fallback — usar cache local
-        from src.tasks.cache import carregar_cache
-        df_fallback = carregar_cache('nasa_power')
-        if df_fallback is not None:
-            return {'status': 'ok', 'fonte': 'nasa_power', 'fallback': True}
+
+def _fallback_nasa(logger):
+    from src.ingestion.nasa_power import carregar_silver_fallback
+    from src.tasks.cache import carregar_cache, salvar_cache
+
+    df = carregar_silver_fallback()
+    if df is not None:
+        salvar_cache('nasa_power', df)
+        return {'status': 'ok', 'fonte': 'nasa_power_silver', 'fallback': True}
+
+    df = carregar_cache('nasa_power')
+    if df is not None:
+        return {'status': 'ok', 'fonte': 'nasa_power_cache', 'fallback': True}
 
     return {'status': 'erro', 'fonte': 'nasa_power', 'fallback': False}
 
 
 @task(name="ingest_oni", retries=3, retry_delay_seconds=60)
 def ingerir_oni_index(data_corte=None):
-    """Baixa ONI Index NOAA — El Niño/La Niña."""
+    """ONI NOAA → Bronze → Silver → Cache."""
     logger = get_run_logger()
     logger.info("Iniciando ingestão ONI Index NOAA...")
 
-    if data_corte:
-        logger.info(f"DATA_CORTE registrado: {data_corte} (atraso ~60 dias)")
-
     try:
+        from src.ingestion.oni import (
+            ingerir_bronze, bronze_para_silver,
+            salvar_silver
+        )
         from src.tasks.cache import salvar_cache
-        url = "https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt"
-        r = requests.get(url, timeout=15)
-        if r.status_code == 200:
-            linhas = [l.split() for l in r.text.strip().split('\n')[1:] if l.strip()]
-            df_oni = pd.DataFrame(linhas, columns=['seas', 'yr', 'total', 'anom'])
-            salvar_cache('oni_index', df_oni)
-            logger.info(f"ONI Index — {len(df_oni)} trimestres")
-            return {'status': 'ok', 'fonte': 'oni', 'fallback': False}
+
+        df_bronze = ingerir_bronze()
+        df_silver = bronze_para_silver(df_bronze)
+        salvar_silver(df_silver)
+        salvar_cache('oni_index', df_silver)
+
+        logger.info(f"ONI Silver — {len(df_silver)} trimestres")
+        return {'status': 'ok', 'fonte': 'oni', 'fallback': False}
 
     except Exception as e:
         logger.error(f"ONI erro: {e}")
-        from src.tasks.cache import carregar_cache
-        df_fallback = carregar_cache('oni_index')
-        if df_fallback is not None:
-            return {'status': 'ok', 'fonte': 'oni', 'fallback': True}
+        return _fallback_oni(logger)
+
+
+def _fallback_oni(logger):
+    from src.ingestion.oni import carregar_silver_fallback
+    from src.tasks.cache import carregar_cache, salvar_cache
+
+    df = carregar_silver_fallback()
+    if df is not None:
+        salvar_cache('oni_index', df)
+        return {'status': 'ok', 'fonte': 'oni_silver', 'fallback': True}
+
+    df = carregar_cache('oni_index')
+    if df is not None:
+        return {'status': 'ok', 'fonte': 'oni_cache', 'fallback': True}
 
     return {'status': 'erro', 'fonte': 'oni', 'fallback': False}
 
 
 @task(name="ingest_google_trends", retries=2, retry_delay_seconds=120)
-def ingerir_google_trends(data_corte: datetime = None):
-    """Atualiza Google Trends para MT."""
+def ingerir_google_trends(data_corte=None):
+    """Google Trends → Bronze → Silver → Cache."""
     logger = get_run_logger()
-    logger.info("Atualizando Google Trends...")
+    logger.info("Iniciando ingestão Google Trends...")
 
     try:
-        from pytrends.request import TrendReq
-        from src.tasks.cache import salvar_cache
-        import time
-
-        pytrends = TrendReq(hl='pt-BR', tz=-240)
-        data_fim  = data_corte if data_corte else datetime.now()
-        hoje      = data_fim.strftime('%Y-%m-%d')
-        mes_passado = (data_fim - timedelta(days=90)).strftime('%Y-%m-%d')
-        logger.info(f"Google Trends — corte aplicado: até {hoje} (lag=7d garantido)")
-
-        pytrends.build_payload(
-            kw_list=['dengue'],
-            timeframe=f'{mes_passado} {hoje}',
-            geo='BR-MT'
+        from src.ingestion.trends import (
+            ingerir_bronze, bronze_para_silver,
+            salvar_silver
         )
-        df = pytrends.interest_over_time()
+        from src.tasks.cache import salvar_cache
 
-        if not df.empty:
-            df_cache = df.reset_index()[['date', 'dengue']].rename(
-                columns={'date': 'data', 'dengue': 'trends_dengue'}
-            )
-            salvar_cache('google_trends', df_cache)
-            logger.info(f"Google Trends — {len(df)} semanas atualizadas")
-            return {
-                'status':   'ok',
-                'n_semanas': len(df),
-                'fonte':    'google_trends',
-                'fallback': False
-            }
-        time.sleep(2)
+        df_bronze = ingerir_bronze(data_corte=data_corte)
+        df_silver = bronze_para_silver(df_bronze, data_corte=data_corte)
+        salvar_silver(df_silver)
+        salvar_cache('google_trends', df_silver)
+
+        logger.info(f"Trends Silver — {len(df_silver)} semanas")
+        return {
+            'status':    'ok',
+            'n_semanas': len(df_silver),
+            'fonte':     'google_trends',
+            'fallback':  False
+        }
 
     except Exception as e:
         logger.error(f"Google Trends erro: {e}")
-        from src.tasks.cache import carregar_cache
-        df_fallback = carregar_cache('google_trends')
-        if df_fallback is not None:
-            return {'status': 'ok', 'fonte': 'google_trends',
-                    'fallback': True, 'n_semanas': len(df_fallback)}
+        return _fallback_trends(logger)
+
+
+def _fallback_trends(logger):
+    from src.ingestion.trends import carregar_silver_fallback
+    from src.tasks.cache import carregar_cache, salvar_cache
+
+    df = carregar_silver_fallback()
+    if df is not None:
+        salvar_cache('google_trends', df)
+        return {'status': 'ok', 'fonte': 'trends_silver', 'fallback': True}
+
+    df = carregar_cache('google_trends')
+    if df is not None:
+        return {'status': 'ok', 'fonte': 'google_trends_cache',
+                'fallback': True, 'n_semanas': len(df)}
 
     return {'status': 'erro', 'fonte': 'google_trends', 'fallback': False}

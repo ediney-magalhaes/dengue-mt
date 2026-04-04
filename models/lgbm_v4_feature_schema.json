@@ -61,16 +61,21 @@
     "ndbi_lag_60d"
   ],
   "n_features": 59,
+  "pipeline_version": "1.0.1-dev",
+  "commit_sha": "local",
+  "dataset_version": "v4",
   "drop_cols": [
     "data",
     "casos",
     "casos_nowcast",
-    "municipio_id"
+    "municipio_id",
+    "fator_nowcasting",
+    "casos_por_100k",
+    "casos_nowcast_por_100k"
   ],
-  "timestamp": "2026-03-26",
-  "r2": 0.82,
-  "mae": 17.6,
-  "pipeline_version": "1.0.1-dev",
-  "commit_sha": "local",
-  "dataset_version": "v4"
+  "data_treino": "2026-03-15",
+  "n_registros_treino": 53,
+  "timestamp": "2026-04-04T11:49:08.080335",
+  "r2": 0.059,
+  "mae": 52.7
 }

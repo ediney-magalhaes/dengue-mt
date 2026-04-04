@@ -61,7 +61,10 @@ def monitorar_drift_modelo():
     modelo = joblib.load(modelo_path)
     df = pd.read_parquet(gold_path)
     df['data'] = pd.to_datetime(df['data'])
-    df = df.sort_values('data').dropna()
+    df = df.sort_values('data').reset_index(drop=True)
+    # LightGBM lida com NaN nativamente — não remover linhas
+    # Filtrar apenas registros com target disponível
+    df = df[df['casos'].notna()]
 
     # Janelas: referência (ano anterior) vs atual (últimos 90 dias)
     data_max  = df['data'].max()
@@ -71,7 +74,8 @@ def monitorar_drift_modelo():
     df_ref = df[(df['data'] >= corte_ref) & (df['data'] < corte_cur)].copy()
     df_cur = df[df['data'] >= corte_cur].copy()
 
-    if len(df_cur) < 30:
+    # Dados semanais: 30 dias ≈ 4 semanas — limiar ajustado para série semanal
+    if len(df_cur) < 8:
         logger.warning("Poucos dados recentes para avaliar drift")
         return {'status': 'poucos_dados', 'retreinar': False,
                 'nivel_drift': 'desconhecido', 'params_retreino': None}

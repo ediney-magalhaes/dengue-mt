@@ -1,0 +1,67 @@
+{
+  "pipeline_version": "1.0.1-dev",
+  "dataset_version": "v4",
+  "model_version": "lgbm_v4",
+  "commit_sha": "local",
+  "run_env": "local",
+  "timestamp": "2026-04-04T11:49:19.114121",
+  "data_corte": "2026-03-21",
+  "atraso_dias": 14,
+  "atrasos_fontes": {
+    "sinan": 105,
+    "nasa_power": 7,
+    "google_trends": 7,
+    "oni_index": 60,
+    "gee_ndvi": 14,
+    "inmet": 2
+  },
+  "resultados": {
+    "pipeline_version": "1.0.1-dev",
+    "dataset_version": "v4",
+    "model_version": "lgbm_v4",
+    "commit_sha": "local",
+    "run_env": "local",
+    "timestamp": "2026-04-04T11:49:19.099697",
+    "inmet": "ok",
+    "nasa_power": "ok",
+    "oni": "ok",
+    "trends": "ok",
+    "contratos": "ok",
+    "drift_mae": 44.43,
+    "drift_r2": -0.69,
+    "retreinar": true,
+    "retreino": "promovido",
+    "data_corte": "2026-03-21",
+    "gold_snapshot": "gold/dataset_features_v4_2026-04-04.parquet",
+    "drift_score": 0.2896,
+    "nivel_drift": "normal",
+    "fallbacks": {
+      "inmet": false,
+      "nasa": false,
+      "oni": false,
+      "trends": false
+    },
+    "cache_status": {
+      "nasa_power": {
+        "valido": true,
+        "atualizado_em": "2026-04-04T11:48:31.240317",
+        "n_registros": 445
+      },
+      "oni_index": {
+        "valido": true,
+        "atualizado_em": "2026-04-04T11:48:32.249370",
+        "n_registros": 914
+      },
+      "google_trends": {
+        "valido": true,
+        "atualizado_em": "2026-04-04T11:48:35.465059",
+        "n_registros": 91
+      },
+      "inmet": {
+        "valido": true,
+        "atualizado_em": "2026-04-04T11:48:29.136897",
+        "n_registros": 128
+      }
+    }
+  }
+}

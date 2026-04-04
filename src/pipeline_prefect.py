@@ -38,6 +38,7 @@ from src.tasks.validacao  import validar_contratos_dados
 from src.tasks.drift      import monitorar_drift_modelo
 from src.tasks.retreino   import retreinar_modelo
 from src.tasks.publicacao import publicar_gold_versionado
+from src.tasks.gold_update import atualizar_gold_dataset
 
 # ============================================================
 # FLOW PRINCIPAL
@@ -79,7 +80,12 @@ def pipeline_semanal():
     t0 = time.time(); resultado_trends = ingerir_google_trends(data_corte=data_corte);  log_etapa('ingest_trends', t0, resultado_trends)
     if resultado_trends.get('fallback'): alerta_ingestao('trends', resultado_trends.get('status'), True)
 
-    # 1.5 Publicar Gold versionado
+    # 1.5 Atualizar Gold com dados novos
+    t0 = time.time()
+    resultado_gold_update = atualizar_gold_dataset(data_corte=data_corte)
+    log_etapa('atualizar_gold', t0, resultado_gold_update)
+
+    # 1.6 Publicar Gold versionado no HF Hub
     t0 = time.time()
     publicacao_gold = publicar_gold_versionado()
     log_etapa('publicar_gold', t0, publicacao_gold)

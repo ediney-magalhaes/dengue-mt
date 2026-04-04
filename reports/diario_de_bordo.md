@@ -893,7 +893,7 @@ Todo domingo 06h (automático — GitHub Actions):
 - [x] CHANGELOG automático
 - [x] Dicionário de dados
 - [x] Módulo canônico build_features
-- [ ] Promoção/rollback com pytest integrado ao pipeline
+- [x] Promoção/rollback com pytest integrado ao pipeline
 - [ ] Ingestão real INMET + GEE + SINAN
 - [ ] Relatório extensionista IFMT
 - [ ] Artigo SENIC 2026

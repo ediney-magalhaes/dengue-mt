@@ -38,7 +38,7 @@ from src.tasks.validacao  import validar_contratos_dados
 from src.tasks.drift      import monitorar_drift_modelo
 from src.tasks.retreino   import retreinar_modelo
 from src.tasks.publicacao import publicar_gold_versionado
-from src.tasks.gold_update import atualizar_gold_dataset
+from src.tasks.build_gold import build_gold_dataset
 
 # ============================================================
 # FLOW PRINCIPAL
@@ -80,10 +80,10 @@ def pipeline_semanal():
     t0 = time.time(); resultado_trends = ingerir_google_trends(data_corte=data_corte);  log_etapa('ingest_trends', t0, resultado_trends)
     if resultado_trends.get('fallback'): alerta_ingestao('trends', resultado_trends.get('status'), True)
 
-    # 1.5 Atualizar Gold com dados novos
+    # 1.5 Build Gold — Silver → Gold (feature engineering completo)
     t0 = time.time()
-    resultado_gold_update = atualizar_gold_dataset(data_corte=data_corte)
-    log_etapa('atualizar_gold', t0, resultado_gold_update)
+    resultado_gold_update = build_gold_dataset(data_corte=data_corte)
+    log_etapa('build_gold', t0, resultado_gold_update)
 
     # 1.6 Publicar Gold versionado no HF Hub
     t0 = time.time()
@@ -131,8 +131,14 @@ def pipeline_semanal():
 
         # Atualizar CHANGELOG se modelo foi promovido
         from src.tasks.relatorio import atualizar_changelog
-        atualizar_changelog(resumo, resultado_retreino)
-        alerta_retreino(resultado_retreino, resumo)
+        resumo_parcial = {
+            'pipeline_version': PIPELINE_VERSION,
+            'dataset_version':  DATASET_VERSION,
+            'model_version':    MODEL_VERSION,
+            'data_corte':       str(data_corte),
+        }
+        atualizar_changelog(resumo_parcial, resultado_retreino)
+        alerta_retreino(resultado_retreino, resumo_parcial)
 
         log_etapa('retreinar_modelo', t0, resultado_retreino)
         obs_logger.info(

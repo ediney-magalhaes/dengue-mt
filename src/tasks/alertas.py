@@ -43,16 +43,18 @@ def _enviar_mensagem(texto: str) -> bool:
 
 def alerta_pipeline_ok(resumo: dict):
     """Alerta de execução bem-sucedida — enviado sempre."""
-    nivel  = resumo.get('nivel_drift', 'desconhecido')
-    emoji  = {'normal': '🟢', 'moderado': '🟡', 'critico': '🔴'}.get(nivel, '⚪')
-    data   = datetime.now().strftime('%d/%m/%Y %H:%M')
+    nivel       = resumo.get('nivel_drift', 'desconhecido')
+    emoji       = {'normal': '🟢', 'moderado': '🟡', 'critico': '🔴'}.get(nivel, '⚪')
+    data        = datetime.now().strftime('%d/%m/%Y %H:%M')
+    drift_score = resumo.get('drift_score')
+    drift_str   = f"{float(drift_score):.3f}" if drift_score is not None else 'N/A'
 
     texto = (
         f"{emoji} <b>DENGUE MT — Pipeline OK</b>\n"
         f"📅 Data: {data}\n"
         f"📉 MAE: {resumo.get('drift_mae', 'N/A')} casos/dia\n"
         f"📈 R²: {resumo.get('drift_r2', 'N/A')}\n"
-        f"🎯 Drift: {float(resumo.get('drift_score', 0)):.3f} ({nivel})\n"
+        f"🎯 Drift: {drift_str} ({nivel})\n"
         f"🔁 Retreino: {resumo.get('retreino', 'N/A')}\n"
         f"📦 Snapshot: {resumo.get('gold_snapshot', 'N/A')}"
     )
@@ -91,7 +93,7 @@ def alerta_drift(resumo: dict):
     texto = (
         f"{emoji} <b>DENGUE MT — DRIFT {nivel.upper()}</b>\n"
         f"📅 Data: {data}\n"
-        f"🎯 Drift score: {float(drift_score):.3f}\n"
+        f"🎯 Drift: {float(resumo.get('drift_score') or 0):.3f} ({nivel})\n"
         f"📉 MAE: {resumo.get('drift_mae', 'N/A')} casos/dia\n"
         f"📈 R²: {resumo.get('drift_r2', 'N/A')}\n"
         f"⚙️ Ação: {acao}"

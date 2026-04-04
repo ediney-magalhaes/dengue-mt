@@ -64,7 +64,7 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
 
         df = pd.read_parquet(gold_path)
         df['data'] = pd.to_datetime(df['data'])
-        df = df.sort_values('data').dropna().reset_index(drop=True)
+        df = df.sort_values('data').reset_index(drop=True)
 
         # Aplicar corte temporal anti-leakage
         if data_corte:
@@ -78,8 +78,8 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
         # Features — módulo canônico (fonte única de verdade)
         from src.features.build_features import build_features, get_target, DROP_COLS
         drop_cols = [c for c in DROP_COLS if c in df.columns]
-        X = build_features(df, data_corte=data_corte)
-        y = get_target(df, data_corte=data_corte)
+        X = build_features(df, data_corte=None, validar=True)
+        y = get_target(df, data_corte=None)
 
         # Carregar modelo atual
         modelo_path = MODELS_DIR / 'lgbm_v4_producao.pkl'

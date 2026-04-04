@@ -3,12 +3,22 @@
 # Orquestrador: Prefect 3.x
 # ============================================================
 
+from dotenv import load_dotenv
+load_dotenv()
 from prefect import flow, get_run_logger
 from src.tasks.relatorio import gerar_relatorio_execucao
+from src.tasks.alertas import (
+    alerta_pipeline_ok,
+    alerta_pipeline_falhou,
+    alerta_drift,
+    alerta_retreino,
+    alerta_ingestao
+)
 from datetime import datetime
 from pathlib import Path
 import time
 import json
+import pandas as pd
 
 from src.config import (
     PIPELINE_VERSION, DATASET_VERSION, MODEL_VERSION,
@@ -28,10 +38,6 @@ from src.tasks.validacao  import validar_contratos_dados
 from src.tasks.drift      import monitorar_drift_modelo
 from src.tasks.retreino   import retreinar_modelo
 from src.tasks.publicacao import publicar_gold_versionado
-from src.tasks.alertas    import enviar_alerta_email
-
-import pandas as pd
-
 
 # ============================================================
 # FLOW PRINCIPAL
@@ -62,9 +68,16 @@ def pipeline_semanal():
 
     # 1. Ingestão — todas as tasks recebem data_corte
     t0 = time.time(); resultado_inmet  = ingerir_inmet(data_corte=data_corte);          log_etapa('ingest_inmet',  t0, resultado_inmet)
+    if resultado_inmet.get('fallback'): alerta_ingestao('inmet', resultado_inmet.get('status'), True)
+
     t0 = time.time(); resultado_nasa   = ingerir_nasa_power(data_corte=data_corte);     log_etapa('ingest_nasa',   t0, resultado_nasa)
+    if resultado_nasa.get('fallback'): alerta_ingestao('nasa_power', resultado_nasa.get('status'), True)
+
     t0 = time.time(); resultado_oni    = ingerir_oni_index(data_corte=data_corte);      log_etapa('ingest_oni',    t0, resultado_oni)
+    if resultado_oni.get('fallback'): alerta_ingestao('oni', resultado_oni.get('status'), True)
+
     t0 = time.time(); resultado_trends = ingerir_google_trends(data_corte=data_corte);  log_etapa('ingest_trends', t0, resultado_trends)
+    if resultado_trends.get('fallback'): alerta_ingestao('trends', resultado_trends.get('status'), True)
 
     # 1.5 Publicar Gold versionado
     t0 = time.time()
@@ -86,15 +99,14 @@ def pipeline_semanal():
         obs_logger.warning(f"Não foi possível checar nulos: {e}")
 
     if contratos['status'] == 'erro':
-        enviar_alerta_email(
-            assunto="ALERTA: Contratos de dados violados — Dengue MT",
-            mensagem=f"Erros: {contratos.get('erros', [])}"
-        )
+        alerta_pipeline_falhou('validar_contratos',
+                               str(contratos.get('erros', [])))
 
     # 3. Drift
     t0 = time.time()
     drift = monitorar_drift_modelo()
     log_etapa('monitorar_drift', t0, drift)
+    alerta_drift(drift)
     if drift.get('mae_recente'):
         log_metricas(drift['mae_recente'], drift['r2_recente'])
         obs_logger.info(
@@ -114,6 +126,7 @@ def pipeline_semanal():
         # Atualizar CHANGELOG se modelo foi promovido
         from src.tasks.relatorio import atualizar_changelog
         atualizar_changelog(resumo, resultado_retreino)
+        alerta_retreino(resultado_retreino, resumo)
 
         log_etapa('retreinar_modelo', t0, resultado_retreino)
         obs_logger.info(
@@ -125,26 +138,13 @@ def pipeline_semanal():
         if resultado_retreino['status'] == 'promovido':
             logger.info(f"Retreino concluído — R²={resultado_retreino['r2_novo']}")
         elif resultado_retreino['status'] == 'mantido':
-            enviar_alerta_email(
-                assunto="Retreino executado mas modelo anterior mantido",
-                mensagem=f"Novo R²={resultado_retreino['r2_novo']} inferior ao atual={resultado_retreino['r2_anterior']}"
-            )
+            alerta_pipeline_falhou('retreino_mantido',
+                                   f"R² novo={resultado_retreino.get('r2_novo')} < atual={resultado_retreino.get('r2_anterior')}")
         else:
-            enviar_alerta_email(
-                assunto="ERRO no retreino — Dengue MT",
-                mensagem=f"Motivo: {resultado_retreino.get('motivo', 'desconhecido')}"
-            )
+            alerta_pipeline_falhou('retreino_erro',
+                                   resultado_retreino.get('motivo', 'erro desconhecido'))
     else:
         logger.info("Sem drift — retreino não necessário")
-
-    if drift.get('retreinar', False) and resultado_retreino['status'] != 'promovido':
-        enviar_alerta_email(
-            assunto="ALERTA: Retreino necessário — Dengue MT",
-            mensagem=(
-                f"MAE recente: {drift.get('mae_recente')} \n"
-                f"R² recente: {drift.get('r2_recente')}"
-            )
-        )
 
     # Resumo final
     # Status do cache de todas as fontes
@@ -200,7 +200,10 @@ def pipeline_semanal():
     logger.info("Metadata salvo em metadata/run_metadata.json")
 
     log_pipeline_end(datetime.now().isoformat(), resultado_retreino['status'])
-
+    
+    # Alerta de execução concluída
+    alerta_pipeline_ok(resumo)
+    
     # Registrar no MLflow
     from src.tasks.mlflow_tracking import registrar_run_mlflow
     run_id = registrar_run_mlflow(resumo, drift=drift)

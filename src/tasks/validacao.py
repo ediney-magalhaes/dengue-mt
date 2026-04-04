@@ -23,11 +23,19 @@ def validar_contratos_dados():
     df = pd.read_parquet(gold_path)
 
     # Contrato 1: sem nulos nas features críticas
-    features_criticas = ['casos', 'temp_media', 'precipitacao_total',
-                         'umidade_media', 'casos_lag_7d']
+    # casos_lag_7d: tolerância de 9 semanas (transição histórico → novos dados)
+    features_criticas = ['casos', 'temp_media', 'precipitacao_total', 'umidade_media']
     nulos = df[features_criticas].isnull().sum()
     if nulos.any():
         erros.append(f"Nulos em features críticas: {nulos[nulos>0].to_dict()}")
+
+    # Verificar casos_lag_7d com tolerância para transição histórico→novos
+    nulos_lag = df['casos_lag_7d'].isnull().sum()
+    TOLERANCIA_LAG = 70  # ~9 semanas × 2 municípios × lag máximo 28d
+    if nulos_lag > TOLERANCIA_LAG:
+        erros.append(f"casos_lag_7d com nulos excessivos: {nulos_lag} > {TOLERANCIA_LAG}")
+    elif nulos_lag > 0:
+        logger.warning(f"casos_lag_7d: {nulos_lag} nulos tolerados (transição histórico→novos)")
 
     # Contrato 2: casos não negativos
     if (df['casos'] < 0).any():

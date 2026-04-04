@@ -14,6 +14,37 @@ import joblib
 import json
 import os
 
+def _rodar_pytest(logger) -> bool:
+    """
+    Roda os 13 testes pytest programaticamente.
+    Bloqueia promoção se qualquer teste falhar.
+    Retorna True se todos passaram, False caso contrário.
+    """
+    import subprocess
+    import sys
+
+    logger.info("Rodando pytest — validação antes da promoção...")
+    try:
+        resultado = subprocess.run(
+            [sys.executable, '-m', 'pytest', 'tests/', '-v', '--tb=short', '-q'],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+
+        if resultado.returncode == 0:
+            logger.info("pytest — todos os testes passaram ✅")
+            return True
+        else:
+            logger.error(f"pytest — testes falharam ❌\n{resultado.stdout[-500:]}")
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.error("pytest — timeout após 120s ❌")
+        return False
+    except Exception as e:
+        logger.error(f"pytest — erro ao executar: {e} ❌")
+        return False
 
 @task(name="retreinar_modelo")
 def retreinar_modelo(data_corte=None, params_retreino=None):
@@ -161,7 +192,12 @@ def retreinar_modelo(data_corte=None, params_retreino=None):
         logger.info(f"R² novo modelo: {r2_novo:.3f} | MAE: {mae_novo:.1f}")
 
         # Decisão: promover ou manter
-        promover = r2_novo >= (r2_atual - 0.05) if r2_atual else True
+        r2_ok    = r2_novo >= (r2_atual - 0.05) if r2_atual else True
+        mae_ok   = mae_novo <= (float(r2_atual or mae_novo) * 1.10) if r2_atual else True
+
+        # Validação pytest antes de promover
+        pytest_ok = _rodar_pytest(logger)
+        promover = r2_ok and pytest_ok
 
         if promover:
             joblib.dump(novo_modelo, modelo_path)

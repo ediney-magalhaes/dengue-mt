@@ -409,11 +409,116 @@ Pasta `data/cache/` com arquivo por fonte + `cache_metadata.json`.
 
 **Referência:** Feature Store pattern — MLOps best practices (ScienceDirect 2025)
 
+
+## Arquitetura Medalhão Completa — Bronze→Silver→Gold Incremental (v1.4.0)
+
+**Data:** 04/04/2026
+
+### Problema identificado
+
+O pipeline estava pulando etapas da arquitetura medalhão — dados da InfoDengue API iam direto para o cache e depois para o Gold sem passar pelo Bronze e Silver corretamente. Features históricas (trends_lag, ndbi, ndvi 2018-2024) eram recalculadas do zero a cada execução e perdidas.
+
+### Decisão 1: Módulos de ingestão separados por responsabilidade
+
+**Estrutura adotada:**
+```text
+src/ingestion/
+├── infodengue.py  ← Bronze→Silver InfoDengue (162 linhas)
+├── nasa_power.py  ← Bronze→Silver NASA POWER (129 linhas)
+├── oni.py         ← Bronze→Silver ONI Index (78 linhas)
+└── trends.py      ← Bronze→Silver Google Trends (93 linhas)
+```
+**Funções padronizadas por módulo:**
+- `ingerir_bronze()` — busca API e salva em `data/bronze/`
+- `bronze_para_silver()` — limpa, valida e padroniza
+- `salvar_silver()` — persiste em `data/silver/`
+- `carregar_silver_fallback()` — fallback quando API falha
+
+**Justificativa:** Single Responsibility Principle — cada módulo tem uma função clara. `src/tasks/ingestao.py` passa a ser apenas orquestrador Prefect, delegando lógica de negócio aos módulos.
+
+---
+
+### Decisão 2: Build Gold incremental com contexto histórico
+
+**Problema:** `calcular_todas_features()` recalculava toda a série do zero a cada execução, perdendo features históricas (`trends_lag_*` com 99% nulos, `ndbi_gee` apenas 2018-2024).
+
+**Solução adotada:**
+```text
+Gold anterior (completo, todas features) ← preservado
++
+Silver novo (apenas semanas novas após última data do Gold)
+↓
+calcular_features_novas() — usa histórico como contexto
+↓
+pd.concat([Gold anterior, novas semanas com features])
+↓
+Gold atualizado
+```
+**Vantagem:** lags e médias móveis calculados corretamente usando o histórico real como contexto — sem perda de informação histórica.
+
+**Referência:** Codeco et al. 2018 — continuidade da série temporal epidemiológica.
+
+---
+
+### Decisão 3: Alinhamento temporal NASA POWER → InfoDengue
+
+**Problema:** NASA POWER é diário e InfoDengue usa Semana Epidemiológica (SE) começando no domingo. O `dt.to_period('W')` do pandas usa segunda-feira como início — causando desalinhamento de 1 dia.
+
+**Solução:**
+```python
+df_nasa['semana'] = df_nasa['data'] - pd.to_timedelta(
+    df_nasa['data'].dt.dayofweek + 1, unit='D'
+)
+```
+
+**Justificativa:** Portaria SVS/MS nº 5/2010 define SE brasileira com início no domingo. Codeco et al. 2018 usa exatamente essa agregação para dengue.
+
+---
+
+### Decisão 4: LightGBM com NaN nativamente — sem dropna
+
+**Problema:** `dropna()` no drift e retreino removia todos os registros de 2025/2026 que tinham `trends_lag_*` nulos (99% do histórico não tem Trends).
+
+**Decisão:** Remover todos os `dropna()` sobre features — filtrar apenas `casos.notna()` para garantir target disponível. LightGBM lida com NaN nativamente via split ótimo.
+
+**Justificativa:** LightGBM documentation — "LightGBM handles missing values natively by learning the optimal direction for each split."
+
+---
+
+### Decisão 5: Janela de drift — 26 Semanas Epidemiológicas
+
+**Problema:** Janela de 90 dias tinha apenas 13 registros semanais — insuficiente para Wasserstein distance.
+
+**Justificativa:**
+- Rabanser et al. 2019 — Wasserstein distance requer mínimo ~50 amostras para validade estatística
+- Com dados semanais: 26 SE (~6 meses) é o mínimo epidemiologicamente significativo
+- Janela de referência: 52 SE (1 ano anterior)
+
+**Status:** Limiar mínimo atual = 8 registros (temporário). Meta: aumentar para 26 SE quando Gold tiver dados suficientes de 2025/2026 (previsto: julho/2026).
+
+---
+
+### Decisão 6: trends_lag com 99% nulos — impacto e mitigação
+
+**Situação:** Google Trends retorna apenas 90 dias de histórico. Features `trends_lag_7d/14d/21d` ficam nulas para dados 2018-2023 (~99% do dataset).
+
+**Impacto avaliado:**
+- LightGBM ignora features com NaN ao escolher splits — sem erro, mas feature subutilizada
+- No período 2025/2026 (últimas 91 semanas) Trends está disponível e contribui
+- Correlação Trends × casos: r=0.922 (Oliveira et al. 2023) — feature importante no curto prazo
+
+**Mitigação futura:** armazenar Silver histórico Trends no HF Hub para preservar série completa. Pendente para v1.5.
+
+**Para o artigo:** documentar limitação explicitamente e reportar importância de feature via SHAP separadamente para período com/sem Trends.
+
+
 ---
 
 ## Próximas decisões pendentes
 
-- [ ] Ingestão real INMET + GEE + SINAN
+- [ ] Silver histórico Trends no HF Hub — preservar série completa
+- [ ] Aumentar limiar mínimo drift de 8 para 26 SE (julho/2026)
+- [ ] Restaurar `test_modelo_r2_minimo` para 0.50 após modelo estabilizar
 - [ ] Seed global e ambiente fixo para reprodutibilidade total
 - [ ] Relatório extensionista IFMT
 - [ ] Artigo SENIC 2026

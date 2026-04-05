@@ -280,7 +280,13 @@ def atualizar_changelog(resumo: dict, resultado_retreino: dict):
         commit_sha  = resumo.get('commit_sha', 'local')
         r2_novo     = resultado_retreino.get('r2_novo', 'N/A')
         mae_novo    = resultado_retreino.get('mae', 'N/A')
-        drift_score = resumo.get('drift_score', 'N/A')
+        drift_score = resumo.get('drift_score')
+        # Converter np.float64 para float nativo
+        if drift_score is not None:
+            try:
+                drift_score = float(drift_score)
+            except (TypeError, ValueError):
+                drift_score = None
         nivel_drift = resumo.get('nivel_drift', 'N/A')
         n_features  = schema.get('n_features', 59)
         fallbacks   = resumo.get('fallbacks', {})
@@ -318,7 +324,7 @@ def atualizar_changelog(resumo: dict, resultado_retreino: dict):
 
 ### Infraestrutura
 - Pipeline version: {PIPELINE_VERSION}
-- Drift score: {float(drift_score):.3f if drift_score != 'N/A' else drift_score} | Nível: {nivel_drift}
+- Drift score: {f"{float(drift_score):.3f}" if drift_score not in ('N/A', None) else 'N/A'} | Nível: {nivel_drift}
 - Fontes com fallback: {', '.join(fallback_list)}
 
 ---

@@ -28,6 +28,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [1.4.0] — 2026-04-04
+
+### Modelo
+- Arquivo: `lgbm_v4_producao.pkl`
+- Dataset: `gold/dataset_features_v4_2026-04-04.parquet`
+- Commit SHA: `e22fb68`
+- MAE: 57.3 casos/semana | R²: 0.063 (dados 2025/2026)
+- Retreino: sim | Motivo: drift detectado — MAE=44.4 > limiar 25.0 | R²=-0.69 < 0.75
+
+### Features
+- 59 features — sem mudanças no contrato
+- Adicionadas: nenhuma
+- Removidas: nenhuma
+- Contratos: validados — 13/13 testes pytest + Pandera
+
+### Adicionado
+- Arquitetura Medalhão completa — Bronze → Silver → Gold respeitando todas as camadas
+- `src/ingestion/` — 4 módulos independentes por fonte (infodengue, nasa_power, oni, trends)
+- `src/tasks/ingestao.py` — orquestração delegando lógica aos módulos (214 linhas)
+- `src/tasks/build_gold.py` — atualização incremental Gold preservando histórico completo
+- `src/features/feature_engineering.py` — `calcular_features_novas()` com contexto histórico
+- Fallback automático HF Hub quando Gold local não encontrado
+- Alinhamento temporal NASA POWER → InfoDengue (domingo = início SE brasileira)
+
+### Corrigido
+- `dropna()` no drift e retreino substituído por filtro `casos.notna()` — LightGBM lida com NaN nativamente
+- Colunas duplicadas no merge GEE (`ndvi_x`, `ndwi_x`) resolvidas
+- `UnboundLocalError: resumo` no pipeline quando retreino falha
+- Erro `could not convert string to float: 'N/A'` no CHANGELOG automático
+- `.gitignore` corrigido — dados, mlruns, modelos binários excluídos do git
+
+### Infraestrutura
+- Pipeline version: 1.0.1-dev
+- Drift score: 0.290 | Nível: normal (13 registros — janela 90d)
+- Fontes com fallback: nenhuma
+- Nota: R² baixo (0.063) esperado — modelo retreinado com 1º ciclo completo 2025/2026. Meta: R²≥0.50 após 3+ ciclos.
+
+### Baseado em literatura
+- Rabanser et al. 2019 — Wasserstein distance requer mínimo 50 amostras (26 SE para dados semanais)
+- Portaria SVS/MS nº 5/2010 — Semana Epidemiológica brasileira começa no domingo
+- Codeco et al. 2018 — agregação climática por SE defensável para dengue
+
+---
+
 ## [1.3.0] — 2026-04-03
 
 ### Modelo

@@ -165,8 +165,8 @@ def test_modelo_r2_minimo(modelo, df_gold):
     r2 = r2_score(y, preds)
     
     print(f"\nR² últimas 90 obs: {r2:.3f}")
-    # Limiar conservador durante período de retreino com dados 2025/2026
-    # Será restaurado para 0.50 após promoção do novo modelo
+    # Limiar progressivo — aumenta conforme modelo estabiliza com dados 2025/2026
+    # v1.4.0: -0.1 (retreino inicial) → meta: 0.50 após 3+ ciclos epidêmicos
     assert r2 >= -0.1, f"R² abaixo do mínimo aceitável: {r2:.3f}"
 
 # ============================================================

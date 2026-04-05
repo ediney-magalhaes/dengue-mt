@@ -24,7 +24,7 @@ from src.config import DATA_DIR
 logger = logging.getLogger('dengue-mt.pipeline')
 
 GOLD_PATH    = DATA_DIR / 'gold' / 'dataset_features_v4.parquet'
-GOLD_HIST    = DATA_DIR / 'gold' / 'dataset_features_v4_hist.parquet'
+GOLD_HIST = DATA_DIR / 'gold' / 'dataset_features_v4_hist.parquet'  # fallback local
 SILVER_INFO  = DATA_DIR / 'silver' / 'infodengue' / 'infodengue_2025_atual.parquet'
 SILVER_NASA  = DATA_DIR / 'silver' / 'nasa_power' / 'nasa_power_2025_atual.parquet'
 
@@ -102,25 +102,44 @@ def build_gold_dataset(data_corte=None) -> dict:
 def _carregar_gold_base(logger_pf) -> pd.DataFrame:
     """
     Carrega Gold base — fonte de verdade histórica.
-    Prioridade: Gold atual → Gold hist snapshot.
+    Prioridade:
+    1. Gold local atual (se já tem dados 2025+)
+    2. Gold local hist snapshot
+    3. HF Hub — download automático
     """
-    # Gold atual já existente (pipeline anterior)
+    # 1. Gold local atual com dados 2025+
     if GOLD_PATH.exists():
         df = pd.read_parquet(GOLD_PATH)
         df['data'] = pd.to_datetime(df['data'])
-        # Usar apenas dados até 2024 se Gold atual estiver corrompido
         if df['data'].max().year >= 2025:
-            logger_pf.info(f"Gold base: {len(df)} registros até {df['data'].max().date()}")
+            logger_pf.info(f"Gold base local: {len(df)} registros até {df['data'].max().date()}")
             return df.sort_values('data').reset_index(drop=True)
 
-    # Fallback — snapshot histórico
+    # 2. Snapshot histórico local
     if GOLD_HIST.exists():
         df = pd.read_parquet(GOLD_HIST)
         df['data'] = pd.to_datetime(df['data'])
         logger_pf.info(f"Gold hist snapshot: {len(df)} registros até {df['data'].max().date()}")
         return df.sort_values('data').reset_index(drop=True)
 
-    raise FileNotFoundError("Gold base não encontrado!")
+    # 3. Fallback — HF Hub
+    logger_pf.warning("Gold local não encontrado — baixando do HF Hub...")
+    try:
+        from huggingface_hub import hf_hub_download
+        import shutil
+        path = hf_hub_download(
+            repo_id='edyestatistica/dengue-mt-medallion',
+            filename='gold/dataset_features_v4_latest.parquet',
+            repo_type='dataset'
+        )
+        GOLD_PATH.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(path, GOLD_PATH)
+        df = pd.read_parquet(GOLD_PATH)
+        df['data'] = pd.to_datetime(df['data'])
+        logger_pf.info(f"Gold baixado do HF Hub: {len(df)} registros até {df['data'].max().date()}")
+        return df.sort_values('data').reset_index(drop=True)
+    except Exception as e:
+        raise FileNotFoundError(f"Gold base não encontrado local nem no HF Hub: {e}")
 
 
 def _carregar_semanas_novas(ultima_data: pd.Timestamp,

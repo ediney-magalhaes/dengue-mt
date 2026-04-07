@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: stg_oni
+    description: >
+      Índice ONI (Oceanic Niño Index) NOAA — El Niño/La Niña expandido de
+      granularidade trimestral para semanal. Cada SE recebe o valor ONI do
+      trimestre correspondente (repetição). Período 2018→2025.
+      Referência: NOAA — ONI >= 0.5 = El Niño, <= -0.5 = La Niña.
+      Lag recomendado no modelo: 4-8 SE (ciclo climático regional lento).
+
+    columns:
+      - name: data_se
+        description: "Data de início da SE (domingo)"
+        tests:
+          - not_null
+          - unique
+
+      - name: oni_index
+        description: "Anomalia de temperatura da superfície do mar — índice ONI"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -4
+              max_value: 4
+              where: "oni_index is not null"
+
+      - name: fase_enso
+        description: "Fase ENSO categórica"
+        tests:
+          - accepted_values:
+              values: ['el_nino_forte', 'el_nino', 'neutro', 'la_nina', 'la_nina_forte']
+              where: "fase_enso is not null"
+
+      - name: fase_enso_num
+        description: "Fase ENSO numérica: -2=La Niña forte, -1=La Niña, 0=neutro, 1=El Niño, 2=El Niño forte"
+        tests:
+          - accepted_values:
+              values: [-2, -1, 0, 1, 2]
+              where: "fase_enso_num is not null"
+
+      - name: trimestre_noaa
+        description: "Código do trimestre NOAA (ex: DJF, JFM)"

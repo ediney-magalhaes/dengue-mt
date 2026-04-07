@@ -511,12 +511,160 @@ df_nasa['semana'] = df_nasa['data'] - pd.to_timedelta(
 
 **Para o artigo:** documentar limitação explicitamente e reportar importância de feature via SHAP separadamente para período com/sem Trends.
 
+---
+
+## Refatoração v2.0 — Decisões Arquiteturais Fundamentais
+
+**Data:** 06/04/2026  
+**Contexto:** Auditoria completa das camadas Bronze e Silver revelou inconsistências graves na base de dados que comprometem a validade acadêmica do modelo. Decisão de refatorar a pipeline com rigor metodológico e boas práticas de engenharia de dados.
+
+**Problemas identificados na auditoria:**
+- InfoDengue Bronze: coluna data chamada `data_iniSE`, não padronizada
+- NASA POWER Bronze: dois arquivos com mesmo período (duplicata), coluna `data_str` não convertida
+- ONI Index Silver: sem coluna datetime — merge com outras fontes incorreto
+- SINAN Silver: coluna `DT_NOTIFIC` não renomeada para `data`
+- GEE Bronze: 50% nulos por concatenação incorreta de dois arquivos
+- InfoDengue Silver: 64 duplicatas de data (Cuiabá + VG somados sem discriminação)
+- Gold 2025/2026: `municipio_id = NaN` — casos de Cuiabá e Várzea Grande somados
+
+---
+
+### Decisão 1: Adoção de dbt-core + DuckDB para transformações
+
+**Decisão:** Substituir scripts Python ad-hoc de transformação por modelos dbt com DuckDB como engine analítico.
+
+**Justificativa técnica:**
+- Transformações versionadas, testáveis e documentadas por camada
+- Lineage completo Bronze → Silver → Gold rastreável automaticamente
+- Testes de qualidade declarativos (`not_null`, `unique`, `accepted_values`, `relationships`)
+- SQL/Python versionado com Git — cada transformação é auditável
+- DuckDB lê/escreve Parquet nativamente sem infraestrutura adicional
+
+**Referência:** dbt + DuckDB localmente — sem infraestrutura — normaliza dados, deduplica registros, enforça contratos via testes e materializa tabelas prontas para análise. 
+
+**Separação de responsabilidades:**
+```
+EXTRAÇÃO (Python — src/ingestion/)  →  Bronze (Parquet)
+TRANSFORMAÇÃO (dbt + DuckDB)        →  Silver + Gold (Parquet)
+ORQUESTRAÇÃO (Prefect)              →  executa extração + dbt run
+```
+**Storage remoto:** HF Hub continua como repositório público e gratuito para:
+- Gold Parquet: snapshots datados + ponteiro `latest`
+- Modelo treinado: `lgbm_v4_producao.pkl` versionado
+- Relatórios de execução: `execucao_YYYY-MM-DD.md`
+
+O dbt gera o Gold localmente em `data/gold/` — a publicação no HF Hub
+permanece responsabilidade de `src/tasks/publicacao.py` após `dbt run`.
+
+---
+
+### Decisão 2: Granularidade — Cuiabá e Várzea Grande separados
+
+**Decisão:** Manter Cuiabá (geocode 5103403) e Várzea Grande (geocode 5108402) como unidades separadas em todas as camadas.
+
+**Justificativa epidemiológica:**
+- Cuiabá: ~650k habitantes, capital — perfil epidemiológico distinto
+- Várzea Grande: ~400k habitantes, região metropolitana — dinâmica própria
+- Literatura recomenda granularidade municipal para modelos preditivos locais
+- Permite análise comparativa entre municípios no artigo
+
+**Impacto no modelo:**
+- Gold terá coluna `municipio_id` populada em todos os registros
+- Modelos treinados por município ou com `municipio_id` como feature
+- Avaliação separada por município no notebook de análise
+
+---
+
+### Decisão 3: Período definitivo do dataset
+
+**Decisão:** 2018-01-01 → 2025-12-31
+
+**Justificativa:**
+- 2018: início dos dados INMET/NASA POWER disponíveis com qualidade
+- 2025: ano completo mais recente disponível
+- 8 anos de dados = múltiplos ciclos epidêmicos completos (necessário para validação temporal robusta)
+- Exclui 2026 do treino — usar como holdout de teste prospectivo
+
+---
+
+### Decisão 4: Fonte única por tipo de dado
+
+**Decisão:** Eliminar sobreposição de fontes para o mesmo tipo de dado.
+
+| Dado | Fonte única | Justificativa |
+|---|---|---|
+| Casos confirmados + nowcast + Rt | InfoDengue API | Fonte oficial brasileira (Fiocruz/FGV), histórico desde 2010, já por SE e município |
+| Temperatura, precipitação, radiação, umidade | NASA POWER | Única fonte com todas variáveis climáticas relevantes — InfoDengue só tem temp+umidade (ERA5) sem precipitação |
+| ENSO/El Niño | NOAA ONI | Única fonte gratuita de índice ONI oficial |
+| Vegetação e urbanização | GEE Sentinel-2/MODIS | Única fonte de NDVI/NDWI/NDBI com cobertura histórica |
+| Interesse público | Google Trends | Proxy de busca validado — r=0.922 com casos (Oliveira et al. 2023) |
+
+**Referência:** Em estudo LSTM com dados brasileiros, apenas temperatura e umidade foram usados como preditores climáticos do InfoDengue, pois são as únicas variáveis consistentemente disponíveis. Precipitação, amplitude térmica e índices de vegetação precisam vir de fontes externas como reanálise ou satélite. 
+
+---
+
+### Decisão 5: Regras de agregação temporal por fonte
+
+**Decisão:** Granularidade alvo = Semana Epidemiológica brasileira (domingo→sábado, Portaria SVS/MS nº 5/2010).
+
+| Fonte | Granularidade original | Regra de agregação para SE |
+|---|---|---|
+| InfoDengue | Semanal (SE) | Uso direto — já é SE |
+| NASA POWER | Diária | Temperatura: média da SE / Precipitação: acumulado da SE / Radiação e umidade: média da SE |
+| ONI Index | Trimestral | Repetir valor para todas as SE do trimestre |
+| GEE NDVI/NDWI | Mensal | Repetir valor para todas as SE do mês |
+| Google Trends | Semanal | Lag obrigatório de 7 dias (anti-leakage) |
+
+**Justificativa:**
+
+Modelos de previsão de dengue usam temperatura média semanal e precipitação acumulada semanal, analisando diferentes defasagens temporais para identificar o período ótimo de previsão — chegando a 16 semanas de antecedência com alta sensibilidade e especificidade. 
+
+**Lags epidemiológicos documentados:**
+
+| Feature | Lag recomendado | Justificativa biológica |
+|---|---|---|
+| Temperatura | 2-4 SE | Ciclo completo do mosquito Aedes aegypti |
+| Precipitação | 1-3 SE | Tempo para formação e maturação de criadouros |
+| Umidade | 1-2 SE | Sobrevivência do mosquito adulto |
+| ONI/ENSO | 4-8 SE | Ciclo climático regional de resposta lenta |
+| NDVI/NDWI | 2-4 SE | Vegetação responde ao clima com defasagem |
+| Google Trends | 1-2 SE | Sinaliza surto em andamento — busca precede confirmação |
+
+**Referência:** Um aumento de 1°C na temperatura mínima está associado a aumento de 45% nos casos de dengue; aumento de 10mm na precipitação pode aumentar em 6% os casos — evidenciando a importância dos lags climáticos corretos. 
+
+---
+
+### Decisão 6: Testes obrigatórios por camada dbt
+
+**Decisão:** Cada modelo dbt terá testes declarativos obrigatórios antes de avançar para a próxima camada.
+```
+Bronze → staging (Silver):
+
+not_null: geocode, data, casos_confirmados
+accepted_values: geocode in [5103403, 5108402]
+not_null: temp_media, precipitacao_nasa, data (NASA POWER)
+unique: (geocode, data_se) — sem duplicatas por município/semana
+
+Silver → marts (Gold):
+
+unique: (municipio_id, data_se) — chave primária do Gold
+not_null: todas as features críticas do modelo
+accepted_range: temp_media between 10 and 45
+accepted_range: precipitacao_total >= 0
+accepted_range: casos_confirmados >= 0
+date_range: data_se between '2018-01-01' and '2025-12-31'
+no_leakage: data_se <= DATA_CORTE (anti-leakage temporal)
+```
+**Justificativa:** Testes declarativos dbt executam automaticamente a cada `dbt test` — falha bloqueia a promoção para a próxima camada. Garante qualidade sem intervenção manual.
 
 ---
 
 ## Próximas decisões pendentes
 
-- [ ] Silver histórico Trends no HF Hub — preservar série completa
+- [ ] Design do schema dbt — modelos staging, intermediate e marts
+- [ ] Instalação e configuração dbt-core + dbt-duckdb
+- [ ] Refatoração src/ingestion/ — padronização Bronze por fonte
+- [ ] Silver histórico Trends no HF Hub
 - [ ] Aumentar limiar mínimo drift de 8 para 26 SE (julho/2026)
 - [ ] Restaurar `test_modelo_r2_minimo` para 0.50 após modelo estabilizar
 - [ ] Seed global e ambiente fixo para reprodutibilidade total

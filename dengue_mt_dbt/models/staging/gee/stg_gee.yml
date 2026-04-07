@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_gee
+    description: >
+      Google Earth Engine — NDVI e NDWI mensais expandidos para granularidade
+      semanal. Cada SE recebe o valor do mês correspondente (repetição).
+      Fonte: Sentinel-2 + MODIS blend. Período com dados: 2018→2024.
+      SEs de 2025 em diante terão flag_sem_dados_gee = true e valores NULL.
+      Referência: Sebastianelli et al. 2024 — NDVI obtido via MODIS
+      MOD09GA para modelos preditivos de dengue no Brasil.
+      Lag recomendado no modelo: 2-4 SE.
+
+    columns:
+      - name: data_se
+        description: "Data de início da SE (domingo)"
+        tests:
+          - not_null
+          - unique
+
+      - name: ndvi
+        description: "Índice de Vegetação por Diferença Normalizada (-1 a +1)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -1
+              max_value: 1
+              where: "ndvi is not null"
+
+      - name: ndwi
+        description: "Índice de Água por Diferença Normalizada (-1 a +1)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -1
+              max_value: 1
+              where: "ndwi is not null"
+
+      - name: flag_sem_dados_gee
+        description: "True para SEs após 2024 — sem dados GEE disponíveis"
+        tests:
+          - not_null
+
+      - name: fonte_imagem
+        description: "Fonte da imagem: sentinel2, modis ou blend"

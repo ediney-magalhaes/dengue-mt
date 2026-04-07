@@ -28,6 +28,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.0.0-dev] — 2026-04-06
+
+### Contexto
+Auditoria completa das camadas Bronze e Silver revelou inconsistências críticas
+na base de dados que comprometem a validade acadêmica do modelo. Início da
+refatoração com rigor metodológico e boas práticas de engenharia de dados.
+
+### Problemas identificados
+- InfoDengue Bronze: coluna `data_iniSE` não padronizada
+- NASA POWER Bronze: arquivo duplicado, coluna `data_str` não convertida
+- ONI Silver: sem coluna datetime — merge incorreto no Gold
+- SINAN Silver: coluna `DT_NOTIFIC` não renomeada
+- GEE Bronze: 50% nulos por concatenação incorreta
+- Gold 2025/2026: `municipio_id = NaN` — CWB + VG somados
+
+### Decisões arquiteturais
+- Adoção de dbt-core + DuckDB para transformações
+- Cuiabá + Várzea Grande separados em todas as camadas
+- Período definitivo: 2018→2025
+- Fonte única por tipo: InfoDengue (casos) + NASA POWER (clima)
+- Regras de agregação temporal embasadas em literatura
+- Testes obrigatórios por camada dbt
+
+### Adicionado
+- `dengue_mt_dbt/` — projeto dbt inicializado
+- `models/staging/` — 5 modelos staging com testes declarativos
+- `models/staging/sources.yml` — fontes Bronze documentadas
+- `packages.yml` — dbt_utils
+- `scripts/auditoria_bronze.py` — auditoria camada Bronze
+- `scripts/auditoria_silver.py` — auditoria camada Silver
+- `reports/decisoes_modelagem.md` — seção Refatoração v2.0
+
+### Status
+Em desenvolvimento — pipeline v1.4.0 mantido em produção até v2.0 estável
+
+---
+
 ## [1.4.0] — 2026-04-04
 
 ### Modelo

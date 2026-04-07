@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_trends
+    description: >
+      Google Trends — interesse por "dengue" no Brasil/MT, padronizado e
+      com lag obrigatório de 7 dias aplicado (anti-leakage operacional).
+      Limitação crítica: API retorna apenas últimos 90 dias históricos.
+      Portanto esta tabela terá apenas ~13 semanas de dados a cada execução.
+      Correlação com casos confirmados: r=0.922 (Oliveira et al. 2023).
+      Lag recomendado no modelo: 1-2 SE.
+
+    columns:
+      - name: data_se
+        description: "Data de início da SE com lag de 7 dias aplicado"
+        tests:
+          - not_null
+          - unique
+
+      - name: trends_dengue
+        description: "Índice Google Trends para dengue (0-100)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100

@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: stg_infodengue
+    description: >
+      Dados padronizados da API InfoDengue — casos confirmados, nowcast, Rt,
+      nível de alerta e variáveis climáticas por município e Semana Epidemiológica.
+      Fonte oficial brasileira (Fiocruz/FGV). Período 2018→2025.
+      Municípios: Cuiabá (5103403) e Várzea Grande (5108402).
+    
+    columns:
+      - name: municipio_id
+        description: "Código IBGE do município"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [5103403, 5108402]
+
+      - name: data_se
+        description: "Data de início da Semana Epidemiológica (domingo)"
+        tests:
+          - not_null
+
+      - name: semana_epidemiologica
+        description: "Número da SE no ano (1-53)"
+        tests:
+          - not_null
+
+      - name: casos_confirmados
+        description: "Casos confirmados de dengue na SE"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+      - name: rt_index
+        description: "Número de reprodução efetivo Rt"
+
+      - name: nivel_alerta
+        description: "Nível de alerta InfoDengue (1=verde, 2=amarelo, 3=laranja, 4=vermelho)"
+        tests:
+          - accepted_values:
+              values: [1, 2, 3, 4]
+              where: "nivel_alerta is not null"
+
+      - name: temp_media
+        description: "Temperatura média da SE em °C (ERA5 via Mosqlimate)"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 10
+              max_value: 45
+              where: "temp_media is not null"
+
+      - name: umidade_media
+        description: "Umidade relativa média da SE em %"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "umidade_media is not null"
+
+      - name: populacao
+        description: "População do município (estimativa IBGE)"
+        tests:
+          - not_null
+
+    tests:
+      - unique:
+          column_name: "municipio_id || '-' || data_se"
+          name: unique_municipio_data_se

@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: stg_nasa_power
+    description: >
+      Dados padronizados NASA POWER — variáveis climáticas diárias agregadas
+      por Semana Epidemiológica brasileira (início domingo, Portaria SVS/MS nº 5/2010).
+      Valores -999 substituídos por NULL. Período 2018→2025.
+      Temperatura: média da SE. Precipitação: acumulado da SE.
+      Referência: Hii et al. 2012 — temperatura média semanal e precipitação
+      acumulada semanal são as agregações padrão para modelos preditivos de dengue.
+
+    columns:
+      - name: data_se
+        description: "Data de início da SE (domingo)"
+        tests:
+          - not_null
+          - unique
+
+      - name: temp_media_nasa
+        description: "Temperatura média da SE em °C"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 10
+              max_value: 45
+              where: "temp_media_nasa is not null"
+
+      - name: temp_max_nasa
+        description: "Temperatura máxima média da SE em °C"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 10
+              max_value: 55
+              where: "temp_max_nasa is not null"
+
+      - name: temp_min_nasa
+        description: "Temperatura mínima média da SE em °C"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -5
+              max_value: 45
+              where: "temp_min_nasa is not null"
+
+      - name: precipitacao_total_nasa
+        description: "Precipitação acumulada da SE em mm"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              where: "precipitacao_total_nasa is not null"
+
+      - name: umidade_nasa
+        description: "Umidade relativa média da SE em %"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100
+              where: "umidade_nasa is not null"
+
+      - name: radiacao_mj
+        description: "Radiação solar média da SE em MJ/m²"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              where: "radiacao_mj is not null"
+
+      - name: dias_validos_se
+        description: "Número de dias com dados válidos na SE (esperado: 7)"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 7
+
+      - name: flag_se_incompleta
+        description: "True se SE tem menos de 5 dias válidos"

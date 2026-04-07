@@ -1,0 +1,73 @@
+version: 2
+
+sources:
+  - name: bronze_infodengue
+    description: "Dados brutos da API InfoDengue — casos confirmados, nowcast, Rt e clima por município/SE. Fonte oficial brasileira (Fiocruz/FGV). Cobre 2018→2025."
+    meta:
+      granularidade: semanal
+      periodo: "2018-2025"
+      municipios: [5103403, 5108402]
+      lag_operacional_dias: 7
+    tables:
+      - name: cuiaba
+        description: "InfoDengue Cuiabá (geocode 5103403) — todos os anos 2018→2025"
+        external:
+          location: "{{ var('bronze_path') }}/infodengue/infodengue_cuiaba_*.parquet"
+          file_format: parquet
+      - name: varzea_grande
+        description: "InfoDengue Várzea Grande (geocode 5108402) — todos os anos 2018→2025"
+        external:
+          location: "{{ var('bronze_path') }}/infodengue/infodengue_varzea_grande_*.parquet"
+          file_format: parquet
+
+  - name: bronze_nasa_power
+    description: "Dados brutos NASA POWER — temperatura, precipitação, radiação e umidade diários. Fonte: NASA POWER API. Cobre 2018→2025."
+    meta:
+      granularidade: diaria
+      periodo: "2018-2025"
+      variaveis: [temperatura, precipitacao, radiacao, umidade]
+      lag_operacional_dias: 14
+    tables:
+      - name: historico
+        description: "NASA POWER 2018→2025 — série histórica completa"
+        external:
+          location: "{{ var('bronze_path') }}/nasa_power/nasa_historico.parquet"
+          file_format: parquet
+
+  - name: bronze_oni
+    description: "Índice ONI NOAA — El Niño/La Niña trimestral. Cobre 1950→atual."
+    meta:
+      granularidade: trimestral
+      lag_operacional_semanas: 8
+    tables:
+      - name: oni_latest
+        description: "ONI Index série completa"
+        external:
+          location: "{{ var('bronze_path') }}/oni/oni_index_latest.parquet"
+          file_format: parquet
+
+  - name: bronze_trends
+    description: "Google Trends — interesse por dengue no Brasil/MT. Limitação: API retorna apenas últimos 90 dias."
+    meta:
+      granularidade: semanal
+      lag_obrigatorio_dias: 7
+      limitacao: "API retorna apenas 90 dias históricos"
+    tables:
+      - name: trends_latest
+        description: "Google Trends mais recente"
+        external:
+          location: "{{ var('bronze_path') }}/trends/trends_dengue_latest.parquet"
+          file_format: parquet
+
+  - name: bronze_gee
+    description: "Google Earth Engine — NDVI, NDWI, NDBI mensal. Sentinel-2 + MODIS. Cobre 2018→2024."
+    meta:
+      granularidade: mensal
+      periodo: "2018-2024"
+      lag_operacional_semanas: 4
+    tables:
+      - name: gee_blend
+        description: "GEE NDVI/NDWI blend Sentinel-2 + MODIS 2018-2024"
+        external:
+          location: "{{ var('bronze_path') }}/gee/gee_ndvi_ndwi_blend_2018_2024.parquet"
+          file_format: parquet

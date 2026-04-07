@@ -966,6 +966,81 @@ Temporariamente em -0.1 para permitir retreino inicial com dados 2025/2026. Meta
 - [x] Atualizar `ARCHITECTURE.md` com fluxo Bronze→Silver→Gold completo
 
 ---
+## 📅 Semana 11: Revisão
+
+### Sessão 06/04/2026 — Auditoria e Início da Refatoração v2.0
+
+#### Contexto
+Pipeline automático não rodou no domingo 05/04 — job "Retreino + Deploy HF Hub"
+falhou no CI/CD (testes passaram, problema no deploy). Investigação adiada para
+manter foco na auditoria das bases de dados.
+
+#### Auditoria Bronze e Silver
+
+Executada auditoria completa com scripts dedicados (`scripts/auditoria_bronze.py`
+e `scripts/auditoria_silver.py`). Problemas críticos identificados:
+
+**Bronze:**
+- InfoDengue: coluna `data_iniSE` não padronizada — script não encontrava `data`
+- NASA POWER: dois arquivos com mesmo período (duplicata), coluna `data_str` não convertida
+- ONI Index: sem coluna datetime — merge com outras fontes estava incorreto
+- GEE: 50% nulos por concatenação incorreta de dois arquivos
+- SINAN: schema inconsistente entre anos (64 a 121 colunas)
+
+**Silver:**
+- ONI: sem coluna `data` — período desconhecido, merge incorreto no Gold
+- SINAN: coluna `DT_NOTIFIC` não renomeada para `data`
+- InfoDengue: 64 duplicatas de data (Cuiabá + VG somados sem discriminação)
+- INMET: gap de 66 dias em 2019 (jul→set)
+- Gold 2025/2026: `municipio_id = NaN` — casos somados sem separação por município
+
+#### Decisão: Refatoração v2.0
+
+Auditoria confirmou que a base foi construída com inconsistências que comprometem
+a validade acadêmica do modelo. Decisão de refatorar com rigor metodológico.
+
+**Decisões tomadas e documentadas em `decisoes_modelagem.md`:**
+1. dbt-core + DuckDB para transformações (custo zero, Parquet nativo)
+2. Cuiabá + Várzea Grande separados em todas as camadas
+3. Período definitivo: 2018→2025
+4. Fonte única por tipo de dado (InfoDengue para casos, NASA POWER para clima)
+5. Regras de agregação temporal embasadas na literatura
+6. Testes obrigatórios por camada dbt
+
+#### Implementação iniciada
+
+**Ambiente dbt configurado:**
+- dbt-core 1.11.7 + dbt-duckdb 1.10.1 instalados
+- Projeto `dengue_mt_dbt` inicializado
+- `profiles.yml` configurado com paths absolutos
+- `dbt_project.yml` configurado com vars de período e municípios
+
+**Estrutura de modelos criada:**
+```
+dengue_mt_dbt/models/
+├── staging/
+│   ├── infodengue/   stg_infodengue.sql + .yml
+│   ├── nasa_power/   stg_nasa_power.sql + .yml
+│   ├── oni/          stg_oni.sql + .yml
+│   ├── trends/       stg_trends.sql + .yml
+│   └── gee/          stg_gee.sql + .yml
+├── intermediate/     (próxima sessão)
+└── marts/            (próxima sessão)
+```
+**sources.yml criado** — define fontes Bronze com período, granularidade
+e limitações documentadas por fonte.
+
+**packages.yml criado** — dbt_utils para testes de range e unicidade.
+
+### Pendências para próxima sessão
+1. `dbt deps` — instalar dbt_utils
+2. `dbt debug` — validar configuração
+3. Scripts de reingestão histórica Bronze (InfoDengue 2018→2025, NASA POWER 2018→2025)
+4. Modelos intermediate — joins entre fontes + cálculo de lags
+5. Modelo marts — Gold final para ML
+6. Investigar falha CI/CD job "Retreino + Deploy HF Hub"
+
+---
 
 *Instituto Federal de Mato Grosso (IFMT)*
 *Projeto Extensionista — Dengue MT*

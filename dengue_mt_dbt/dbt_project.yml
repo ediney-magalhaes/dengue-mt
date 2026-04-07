@@ -1,0 +1,42 @@
+name: 'dengue_mt_dbt'
+version: '2.0.0'
+config-version: 2
+
+profile: 'dengue_mt_dbt'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Caminhos dos dados Bronze (fontes externas)
+vars:
+  bronze_path: "C:/Users/edy85/OneDrive/Engenheiro-Cientista-Analista de dados/Projeto_Dengue_MT/data/bronze"
+  silver_path: "C:/Users/edy85/OneDrive/Engenheiro-Cientista-Analista de dados/Projeto_Dengue_MT/data/silver"
+  gold_path: "C:/Users/edy85/OneDrive/Engenheiro-Cientista-Analista de dados/Projeto_Dengue_MT/data/gold"
+  data_inicio: "2018-01-01"
+  data_fim: "2025-12-31"
+  municipios: [5103403, 5108402]  # Cuiabá e Várzea Grande
+
+models:
+  dengue_mt_dbt:
+    # Bronze → Silver (staging)
+    staging:
+      +materialized: view
+      +schema: staging
+
+    # Silver → joins e lags (intermediate)
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+
+    # Gold — dataset final para ML (marts)
+    marts:
+      +materialized: table
+      +schema: marts

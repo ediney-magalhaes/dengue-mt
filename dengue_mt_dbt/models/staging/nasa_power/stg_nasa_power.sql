@@ -4,12 +4,26 @@
 -- valida faixas de valores, agrega diário → Semana Epidemiológica
 -- Período: 2018→2025
 
-with bronze as (
-    select * from {{ source('bronze_nasa_power', 'historico') }}
+with cuiaba as (
+    select *, 'cuiaba' as municipio, 5103403 as municipio_id
+     from {{ source('bronze_nasa_power', 'cuiaba') }}
+),
+
+varzea_grande as(
+    select *, 'varzea_grande' as municipio, 5108402 as municipio_id
+    from {{ source('bronze_nasa_power', 'varzea_grande') }}
+),
+
+bronze as (
+    select * from cuiaba
+    union all
+    select * from varzea_grande
 ),
 
 convertido as (
     select
+        municipio,
+        municipio_id,
         -- Converte data string YYYYMMDD → date
         strptime(cast(data_str as varchar), '%Y%m%d')::date   as data,
 
@@ -52,6 +66,8 @@ validado as (
 -- Agrega diário → Semana Epidemiológica (início no domingo)
 agregado_se as (
     select
+        municipio,
+        municipio_id,
         -- Início da SE = domingo anterior
         date_trunc('week', data) - interval '1 day'            as data_se,
 
@@ -70,7 +86,7 @@ agregado_se as (
         count(temp_media_nasa)                                 as dias_temp_validos
 
     from validado
-    group by date_trunc('week', data) - interval '1 day'
+    group by municipio, municipio_id, date_trunc('week', data) - interval '1 day'
 ),
 
 finalizado as (

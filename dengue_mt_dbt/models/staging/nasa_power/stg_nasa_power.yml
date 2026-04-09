@@ -10,12 +10,21 @@ models:
       Referência: Hii et al. 2012 — temperatura média semanal e precipitação
       acumulada semanal são as agregações padrão para modelos preditivos de dengue.
 
+    tests:
+      - unique:
+          column_name: "municipio_id || '-' || data_se::varchar"
+          name: unique_municipio_data_se_nasa
+
     columns:
       - name: data_se
         description: "Data de início da SE (domingo)"
         tests:
           - not_null
-          - unique
+
+      - name: municipio_id
+        description: "Código IBGE do município"
+        tests:
+          - not_null
 
       - name: temp_media_nasa
         description: "Temperatura média da SE em °C"
@@ -73,3 +82,5 @@ models:
 
       - name: flag_se_incompleta
         description: "True se SE tem menos de 5 dias válidos"
+        tests:
+          - not_null

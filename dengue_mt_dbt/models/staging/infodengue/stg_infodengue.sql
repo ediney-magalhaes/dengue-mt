@@ -24,7 +24,7 @@ padronizado as (
         municipio                                       as municipio_nome,
 
         -- Data — Bronze usa data_iniSE
-        cast(data_iniSE as date)                        as data_se,
+        epoch_ms(data_iniSE)::date                      as data_se,
         cast(SE as integer)                             as semana_epidemiologica,
 
         -- Casos

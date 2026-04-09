@@ -659,11 +659,59 @@ no_leakage: data_se <= DATA_CORTE (anti-leakage temporal)
 
 ---
 
+## Separação src/ vs scripts/ — Convenção de Organização (08/04/2026)
+
+**Data:** 08/04/2026
+
+### Decisão: convenção explícita de organização do código
+
+| Pasta | Propósito | Características |
+|---|---|---|
+| `src/` | Código de produção | Roda no pipeline automático, importado por outros módulos, testado com pytest |
+| `scripts/` | Código operacional | Roda manualmente, não importado, sem testes obrigatórios |
+
+**Exemplos:**
+- `src/ingestion/infodengue.py` → ingestão semanal automática (produção)
+- `scripts/backfill_bronze.py` → backfill histórico único (operacional)
+- `scripts/auditoria_bronze.py` → diagnóstico pontual (operacional)
+
+**Justificativa:** Sem essa separação explícita, o projeto acumulou código operacional dentro de `src/` — dificultando manutenção e rastreabilidade. Convenção alinhada com padrão da indústria.
+
+---
+
+## Fontes Externas dbt-duckdb — Configuração (08/04/2026)
+
+**Data:** 08/04/2026
+
+### Decisão: usar `meta.external_location` no sources.yml
+
+**Problema:** dbt-duckdb não lê arquivos Parquet externos automaticamente via `external.location` — requer sintaxe específica com `meta.external_location` e função `read_parquet()`.
+
+**Solução implementada:**
+```yaml
+# sources.yml
+tables:
+  - name: cuiaba
+    meta:
+      external_location: "read_parquet('{{ var(\"bronze_path\") }}/infodengue/infodengue_cuiaba_*.parquet')"
+```
+
+**Decisões técnicas:**
+- Wildcard `*.parquet` — lê todos os anos de uma vez sem loop
+- `external_root` no `profiles.yml` aponta para `data/`
+- Bronze permanece como Parquet local — sem importar para DuckDB
+- Cada fonte tem seu próprio `external_location` por município quando necessário
+
+**Correção adicional:** `data_iniSE` da InfoDengue é timestamp em milissegundos (BIGINT) — conversão correta no DuckDB usa `epoch_ms(data_iniSE)::date` em vez de `cast(data_iniSE as date)`.
+
+---
+
 ## Próximas decisões pendentes
 
-- [ ] Design do schema dbt — modelos staging, intermediate e marts
-- [ ] Instalação e configuração dbt-core + dbt-duckdb
-- [ ] Refatoração src/ingestion/ — padronização Bronze por fonte
+- [ ] Modelos intermediate — joins entre fontes + lags epidemiológicos
+- [ ] Modelo marts — Gold final para ML (dataset_features_v5)
+- [ ] Treinamento LightGBM v5 com Gold correto
+- [ ] Atualizar pipeline Prefect para usar dbt run
 - [ ] Silver histórico Trends no HF Hub
 - [ ] Aumentar limiar mínimo drift de 8 para 26 SE (julho/2026)
 - [ ] Restaurar `test_modelo_r2_minimo` para 0.50 após modelo estabilizar

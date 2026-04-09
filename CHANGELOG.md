@@ -28,6 +28,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.0.0-dev] — 2026-04-08 (continuação)
+
+### Refatoração src/ingestion — responsabilidade única Bronze
+
+**Problema identificado:** módulos de ingestão misturavam responsabilidades —
+Bronze, Silver, fallback e transformações no mesmo script.
+
+**Decisão:** cada módulo `src/ingestion/` tem responsabilidade única —
+apenas buscar API e salvar Bronze. Transformação Bronze→Silver é
+exclusividade do dbt.
+
+### Adicionado
+- `scripts/backfill_bronze.py` — backfill histórico 2018→2026 (uso único)
+- Bronze completo: 18 InfoDengue + 18 NASA POWER + 1 ONI + 1 Trends
+- `dengue_mt_dbt/package-lock.yml` — trava versão dbt_utils 1.3.3
+
+### Modificado
+- `src/ingestion/infodengue.py` — responsabilidade única Bronze
+- `src/ingestion/nasa_power.py` — responsabilidade única Bronze + coordenadas por município
+- `src/ingestion/oni.py` — responsabilidade única Bronze
+- `src/ingestion/trends.py` — responsabilidade única Bronze
+- `dengue_mt_dbt/models/staging/sources.yml` — fontes externas Parquet via `meta.external_location`
+- `dengue_mt_dbt/models/staging/nasa_power/stg_nasa_power.sql` — Cuiabá + VG separados
+- `dengue_mt_dbt/models/staging/infodengue/stg_infodengue.sql` — `epoch_ms()` para timestamp
+- `dengue_mt_dbt/models/staging/nasa_power/stg_nasa_power.yml` — chave composta municipio+data_se
+- `.gitignore` — excluindo dev.duckdb e artefatos dbt
+
+### Validado
+```
+dbt run  --select staging → PASS=5  WARN=0 ERROR=0
+dbt test --select staging → PASS=37 WARN=0 ERROR=0
+```
+
+---
+
 ## [2.0.0-dev] — 2026-04-06
 
 ### Contexto

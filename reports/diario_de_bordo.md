@@ -1040,6 +1040,69 @@ e limitações documentadas por fonte.
 5. Modelo marts — Gold final para ML
 6. Investigar falha CI/CD job "Retreino + Deploy HF Hub"
 
+
+## Sessão 08/04/2026 — Bronze completo + dbt staging PASS=37
+
+### Contexto
+Continuação da refatoração v2.0. Foco em popular o Bronze histórico
+2018→2026 e validar os modelos dbt staging com testes declarativos.
+
+### Scripts de ingestão refatorados
+
+Todos os módulos `src/ingestion/` foram refatorados com responsabilidade
+única — apenas ingestão Bronze. Transformação Bronze→Silver é
+responsabilidade exclusiva do dbt.
+
+**Princípios aplicados:**
+- Separação de responsabilidades — cada módulo faz uma coisa
+- Lógica de skip para anos históricos completos
+- Ano atual sempre reingerido (dados incrementais semanais)
+- try/except em todas as requisições — pipeline não quebra por erro pontual
+- Comentários didáticos linha a linha para fins acadêmicos
+
+**Aprendizado importante desta sessão:**
+- `src/` = código de produção (roda no pipeline automático)
+- `scripts/` = operações manuais/únicas (backfill, auditoria)
+- Não faz sentido ter dois scripts fazendo a mesma coisa
+
+### Bronze populado 2018→2026
+
+Executado `scripts/backfill_bronze.py` — Bronze completo:
+
+| Fonte | Arquivos | Registros | Período |
+|---|---|---|---|
+| InfoDengue | 18 | ~940 SE | 2018→2026, CWB+VG |
+| NASA POWER | 18 | ~6.570 dias | 2018→2026, CWB+VG |
+| ONI Index | 1 | 914 trimestres | 1950→atual |
+| Trends | 1 | 91 semanas | últimos 90 dias |
+
+Removidos 2 arquivos duplicados formato antigo NASA POWER.
+
+### dbt staging — PASS=37
+
+Configuração completa do ambiente dbt:
+- `dbt deps` → dbt_utils 1.3.3 instalado
+- `dbt debug` → All checks passed
+- `sources.yml` refatorado com fontes externas Parquet via `meta.external_location`
+- `stg_nasa_power.sql` atualizado — Cuiabá + Várzea Grande separados
+- `stg_infodengue.sql` corrigido — `epoch_ms(data_iniSE)::date` para conversão correta de timestamp
+
+**Resultado final:**
+```
+dbt run  --select staging → PASS=5  WARN=0 ERROR=0
+dbt test --select staging → PASS=37 WARN=0 ERROR=0
+```
+### Commits desta sessão
+- (23) refactor: src/ingestion — responsabilidade única Bronze
+- (24) feat: dbt staging PASS=37 — fontes externas Parquet
+- (25) chore: gitignore dbt artifacts + package-lock.yml
+
+### Pendências para próxima sessão
+1. Modelos intermediate — joins entre fontes + lags epidemiológicos
+2. Modelo marts — Gold final para ML
+3. Treinamento LightGBM v5 com dados corretos
+4. Atualizar pipeline Prefect para usar dbt
+
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

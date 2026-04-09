@@ -1,9 +1,7 @@
 # ============================================================
-# Dengue MT — Ingestão InfoDengue
+# Dengue MT — Ingestão InfoDengue → Bronze
 # ============================================================
-# Responsabilidade: Bronze → Silver para dados InfoDengue API
-# Separado da orquestração Prefect (src/tasks/ingestao.py)
-# ============================================================
+
 
 import logging
 import requests
@@ -12,151 +10,84 @@ from datetime import datetime
 from pathlib import Path
 from src.config import DATA_DIR
 
-logger = logging.getLogger('dengue-mt.ingestion')
+# configuração dos registros de log
+logger = logging.getLogger('dengue-mt.ingestion.infodengue')
 
+#definição da pasta onde os arquivos serão salvos
 BRONZE_DIR = DATA_DIR / 'bronze' / 'infodengue'
-SILVER_DIR = DATA_DIR / 'silver' / 'infodengue'
+#criar pasta Bronze/infodengue se não existir / parents=True: cria as pastas intermediárias automaticamente / exist_ok=True: não gera erro se a pasta já existir
 BRONZE_DIR.mkdir(parents=True, exist_ok=True)
-SILVER_DIR.mkdir(parents=True, exist_ok=True)
 
+#caminho da API infodengue
+API_URL = 'https://info.dengue.mat.br/api/alertcity'
+#Tempo de espera entre as requisições para cada ano (evitar sobrecarga no servidor)
+DELAY_ENTRE_REQUESTS = 1.5  # segundos
+
+#códigos das cidades
 GEOCODES = {
-    'cuiaba':        '5103403',
-    'varzea_grande': '5108402'
+    'cuiaba':        5103403,
+    'varzea_grande': 5108402
 }
 
-RENAME_MAP = {
-    'casos':     'casos_confirmados',
-    'casos_est': 'casos_nowcast',
-    'tempmed':   'temp_media',
-    'tempmin':   'temp_min',
-    'tempmax':   'temp_max',
-    'umidmed':   'umidade_media',
-    'umidmin':   'umidade_min',
-    'umidmax':   'umidade_max',
-    'Rt':        'rt_index',
-    'nivel':     'nivel_alerta',
-    'p_inc100k': 'incidencia_100k',
-}
+#função para ingestão
+def ingerir_bronze(ano_inicio: int = 2018) -> list[Path]:
+    
+    import time #biblioteca para gestão do tempo (usada no delay entre as requisições)
+    # Definição do ano final
+    ano_fim = int(datetime.now().year)
+    # lista vazia para acumular os caminhos dos paths durante o loop
+    salvos = []
 
-COLS_SILVER = [
-    'data', 'municipio', 'geocode',
-    'casos_confirmados', 'casos_nowcast',
-    'temp_media', 'temp_min', 'temp_max',
-    'umidade_media', 'umidade_min', 'umidade_max',
-    'rt_index', 'nivel_alerta', 'incidencia_100k',
-    'SE', 'pop', 'receptivo', 'transmissao'
-]
-
-
-def ingerir_bronze(ano_inicio: int = 2025,
-                   data_corte=None) -> pd.DataFrame:
-    """
-    Busca dados da InfoDengue API e salva na camada Bronze.
-    Retorna DataFrame bruto com todos os campos da API.
-    """
-    hoje      = datetime.now()
-    ano_atual = hoje.year
-    dfs       = []
-
+    # laço para percorrer cada município
     for municipio, geocode in GEOCODES.items():
-        for ano in range(ano_inicio, ano_atual + 1):
-            params = {
-                'geocode':  geocode,
-                'disease':  'dengue',
-                'format':   'json',
-                'ew_start': 1,
-                'ew_end':   53,
-                'ey_start': ano,
-                'ey_end':   ano
-            }
-            r = requests.get(
-                'https://info.dengue.mat.br/api/alertcity',
-                params=params, timeout=30
-            )
-            if r.status_code != 200 or not r.json():
-                logger.warning(f"InfoDengue {municipio} {ano}: status {r.status_code}")
-                continue
-
-            df = pd.DataFrame(r.json())
-            df['municipio']   = municipio
-            df['geocode']     = geocode
-            df['ingestao_ts'] = datetime.now().isoformat()
-            df['fonte']       = 'infodengue_api'
-
-            # Salvar Bronze por município/ano
+        # laço para ano do período histórico até o ano atual
+        for ano in range(ano_inicio, ano_fim + 1):
+            # definição do caminho e nome do arquivo salvo
             path = BRONZE_DIR / f'infodengue_{municipio}_{ano}.parquet'
-            df.to_parquet(path, index=False)
-            logger.info(f"Bronze: {municipio} {ano} → {len(df)} semanas")
-            dfs.append(df)
+            # Se o arquivo já existe pula (ano atual sempre ingere novamente atualizando a cada semana)
+            if path.exists() and ano < ano_fim:
+                logger.info(f'Bronze já existe — pulando: {path.name}')
+                salvos.append(path)
+                continue
+            # Parâmetros da requisição — filtros enviados para a API InfoDengue / Busca todas as Semanas Epidemiológicas (1-53) do ano inteiro para o município
+            params = {
+                'geocode':  geocode, # código IBGE do município
+                'disease':  'dengue',# doença alvo
+                'format':   'json',  # formato de retorno
+                'ew_start': 1,       # SE inicial (1 = primeira semana do ano)
+                'ew_end':   53,      # SE final (53 = última semana do ano)
+                'ey_start': ano,     # ano inicial
+                'ey_end':   ano      # ano final (mesmo ano = 1 ano por requisição)
+            }
+            # Tratamento e captura de erros
+            try:
+                # Faz a requisição HTTP GET para a API / timeout=30: desiste se não responder em 30 segundos
+                r = requests.get(API_URL, params=params, timeout=30)
+                # Lança erro se API retornou status HTTP de falha (4xx, 5xx)
+                r.raise_for_status()
+                # Converte resposta JSON em lista de dicionários
+                dados = r.json()
+                # Verifica se a API retornou dados — pode retornar 200 mas lista vazia (ex: ano sem registros ou dados ainda não consolidados)
+                if not dados:
+                    logger.warning(f'InfoDengue {municipio} {ano}: sem dados')
+                    continue
 
-    if not dfs:
-        raise ValueError("InfoDengue — sem dados da API")
+                # Monta DataFrame Bronze — dados da API + metadados de rastreabilidade
+                df = pd.DataFrame(dados)
+                df['municipio']   = municipio                  # nome padronizado do município
+                df['geocode']     = geocode                    # código IBGE
+                df['ingestao_ts'] = datetime.now().isoformat() # timestamp da ingestão
+                df['fonte']       = 'infodengue_api'           # origem dos dados
 
-    df_all = pd.concat(dfs, ignore_index=True)
-    logger.info(f"Bronze total: {len(df_all)} registros")
-    return df_all
-
-
-def bronze_para_silver(df: pd.DataFrame,
-                        data_corte=None) -> pd.DataFrame:
-    """
-    Transforma Bronze InfoDengue em Silver:
-    - Converte timestamps
-    - Renomeia colunas para padrão do projeto
-    - Valida tipos e intervalos
-    - Aplica corte temporal
-    - Seleciona colunas Silver
-    """
-    df = df.copy()
-
-    # Converter timestamp para data
-    df['data'] = pd.to_datetime(df['data_iniSE'], unit='ms')
-
-    # Renomear colunas
-    df = df.rename(columns={k: v for k, v in RENAME_MAP.items()
-                             if k in df.columns})
-
-    # Converter numéricas
-    cols_num = ['temp_media', 'temp_min', 'temp_max',
-                'umidade_media', 'umidade_min', 'umidade_max',
-                'casos_confirmados', 'casos_nowcast',
-                'rt_index', 'incidencia_100k']
-    for col in cols_num:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-
-    # Validações Silver
-    df = df[df['data'].notna()]
-    df = df[df['casos_confirmados'] >= 0]
-    if 'temp_media' in df.columns:
-        mask_temp = df['temp_media'].between(10, 50) | df['temp_media'].isna()
-        df = df[mask_temp]
-
-    # Corte temporal anti-leakage
-    if data_corte is not None:
-        df = df[df['data'] <= pd.Timestamp(data_corte)]
-
-    # Selecionar colunas Silver
-    cols = [c for c in COLS_SILVER if c in df.columns]
-    df   = df[cols]
-
-    df = df.sort_values('data').reset_index(drop=True)
-    logger.info(f"Silver InfoDengue: {len(df)} registros")
-    return df
-
-
-def salvar_silver(df: pd.DataFrame) -> Path:
-    """Persiste Silver InfoDengue em disco."""
-    path = SILVER_DIR / 'infodengue_2025_atual.parquet'
-    df.to_parquet(path, index=False)
-    logger.info(f"Silver salvo: {path}")
-    return path
-
-
-def carregar_silver_fallback() -> pd.DataFrame | None:
-    """Carrega Silver salvo como fallback."""
-    path = SILVER_DIR / 'infodengue_2025_atual.parquet'
-    if path.exists():
-        logger.warning("InfoDengue — usando Silver salvo como fallback")
-        return pd.read_parquet(path)
-    return None
+                # Salva DataFrame em formato Parquet no Bronze / index=False -> não salva índice desnecessário
+                df.to_parquet(path, index=False)
+                # Registra o path na lista de salvos e loga confirmação
+                salvos.append(path)
+                logger.info(f'Bronze salvo: {path.name} ({len(df)} registros)')
+            # Captura qualquer erro sem interromper o script / registra no log e continua para o próximo ano/município
+            except Exception as e:
+                logger.error(f'InfoDengue {municipio} {ano}: ERRO — {e}')
+            # Pausa entre requisições — respeita o servidor público da InfoDengue / executado sempre, independente de sucesso ou erro
+            time.sleep(DELAY_ENTRE_REQUESTS)
+    # Retorna lista com todos os arquivos salvos
+    return salvos

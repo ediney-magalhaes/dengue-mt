@@ -65,6 +65,7 @@ models:
           - not_null
 
     tests:
-      - unique:
-          column_name: "municipio_id || '-' || data_se"
-          name: unique_municipio_data_se
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - municipio_id
+            - data_se

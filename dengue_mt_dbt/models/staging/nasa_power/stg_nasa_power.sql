@@ -68,25 +68,17 @@ agregado_se as (
     select
         municipio,
         municipio_id,
-        -- Início da SE = domingo anterior
-        date_trunc('week', data) - interval '1 day'            as data_se,
-
-        -- Temperatura: média da SE
-        round(avg(temp_media_nasa), 2)                         as temp_media_nasa,
-        round(avg(temp_max_nasa), 2)                           as temp_max_nasa,
-        round(avg(temp_min_nasa), 2)                           as temp_min_nasa,
-        round(avg(umidade_nasa), 2)                            as umidade_nasa,
-        round(avg(radiacao_mj), 2)                             as radiacao_mj,
-
-        -- Precipitação: acumulado da SE
-        round(sum(precipitacao_nasa), 2)                       as precipitacao_total_nasa,
-
-        -- Qualidade: quantos dias válidos na SE
-        count(*)                                               as dias_validos_se,
-        count(temp_media_nasa)                                 as dias_temp_validos
-
+        (data - cast(dayofweek(data) as integer))      as data_se,
+        round(avg(temp_media_nasa), 2)                 as temp_media_nasa,
+        round(avg(temp_max_nasa), 2)                   as temp_max_nasa,
+        round(avg(temp_min_nasa), 2)                   as temp_min_nasa,
+        round(avg(umidade_nasa), 2)                    as umidade_nasa,
+        round(avg(radiacao_mj), 2)                     as radiacao_mj,
+        round(sum(precipitacao_nasa), 2)               as precipitacao_total_nasa,
+        count(*)                                       as dias_validos_se,
+        count(temp_media_nasa)                         as dias_temp_validos
     from validado
-    group by municipio, municipio_id, date_trunc('week', data) - interval '1 day'
+    group by municipio, municipio_id, (data - cast(dayofweek(data) as integer))
 ),
 
 finalizado as (
@@ -98,7 +90,8 @@ finalizado as (
         current_timestamp                                      as dbt_updated_at
     from agregado_se
     where data_se >= cast('{{ var("data_inicio") }}' as date)
-      and data_se <= cast('{{ var("data_fim") }}' as date)
+    and data_se <= cast('{{ var("data_fim") }}' as date)
+
 )
 
 select * from finalizado

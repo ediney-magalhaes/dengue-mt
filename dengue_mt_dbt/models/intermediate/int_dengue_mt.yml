@@ -1,0 +1,46 @@
+version: 2
+
+models:
+  - name: int_dengue_mt
+    description: >
+      Intermediate: join entre todas as fontes staging por (municipio_id, data_se).
+      InfoDengue como âncora — todas as outras fontes são left join.
+      Granularidade: semanal por município. Período: 2018→2025.
+      Municípios: Cuiabá (5103403) e Várzea Grande (5108402).
+
+    columns:
+      - name: municipio_id
+        description: "Código IBGE do município"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [5103403, 5108402]
+
+      - name: data_se
+        description: "Data de início da SE (domingo)"
+        tests:
+          - not_null
+
+      - name: casos_confirmados
+        description: "Casos confirmados de dengue na SE"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+      - name: precipitacao_total_nasa
+        description: "Precipitação acumulada da SE em mm (NASA POWER)"
+
+      - name: oni_index
+        description: "Índice ONI — anomalia temperatura superfície do mar"
+
+      - name: trends_dengue
+        description: "Interesse Google Trends por dengue (0-100) com lag 7d"
+
+      - name: ndvi
+        description: "Índice de vegetação NDVI — mensal expandido para SE"
+
+    tests:
+      - unique:
+          column_name: "municipio_id || '-' || data_se::varchar"
+          name: unique_municipio_data_se_int

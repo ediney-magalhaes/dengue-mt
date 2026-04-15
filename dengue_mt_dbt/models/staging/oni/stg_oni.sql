@@ -67,6 +67,7 @@ validado as (
         data_inicio_trimestre is not null
         and data_inicio_trimestre >= cast('{{ var("data_inicio") }}' as date)
         and data_inicio_trimestre <= cast('{{ var("data_fim") }}' as date)
+
         -- Faixa válida para ONI (-4 a +4)
         and oni_index between -4 and 4
 ),
@@ -75,19 +76,14 @@ validado as (
 -- Cada SE recebe o valor ONI do trimestre correspondente
 semanas as (
     select
-        data_se
-    from (
-        select
-            unnest(
-                generate_series(
-                    cast('{{ var("data_inicio") }}' as date),
-                    cast('{{ var("data_fim") }}' as date),
-                    interval '7 days'
-                )
-            )::date as data_se
-    )
-    -- Garante que começa no domingo
-    where dayofweek(data_se) = 0
+        unnest(
+            generate_series(
+                cast('{{ var("data_inicio") }}' as date)
+                    + cast((7 - dayofweek(cast('{{ var("data_inicio") }}' as date))) % 7 as integer),
+                cast('{{ var("data_fim") }}' as date),
+                interval '7 days'
+            )
+        )::date as data_se
 ),
 
 expandido as (
@@ -100,9 +96,12 @@ expandido as (
         o.trimestre_noaa,
         current_timestamp as dbt_updated_at
     from semanas s
+    -- depois
     left join validado o
-        on s.data_se >= o.data_inicio_trimestre
-        and s.data_se < o.data_inicio_trimestre + interval '3 months'
+        on extract('month' from s.data_se)
+           = extract('month' from o.data_inicio_trimestre + interval '1 month')
+        and extract('year' from s.data_se)
+           = extract('year' from o.data_inicio_trimestre + interval '1 month')
 )
 
 select * from expandido

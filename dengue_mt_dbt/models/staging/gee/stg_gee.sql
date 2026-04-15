@@ -31,12 +31,14 @@ semanas as (
     select
         unnest(
             generate_series(
-                cast('{{ var("data_inicio") }}' as date),
+                cast('{{ var("data_inicio") }}' as date)
+                    + cast((7 - dayofweek(cast('{{ var("data_inicio") }}' as date))) % 7 as integer),
                 cast('{{ var("data_fim") }}' as date),
                 interval '7 days'
             )
         )::date as data_se
 ),
+
 
 -- Expande mensal → semanal
 -- Cada SE recebe o valor do mês em que cai
@@ -48,17 +50,15 @@ expandido as (
         g.fonte_imagem,
         g.n_imagens_sentinel2,
         g.n_imagens_modis,
-        -- Flag: SE fora do período GEE (2025 em diante)
         case
             when g.ndvi is null then true
             else false
-        end                         as flag_sem_dados_gee,
-        current_timestamp           as dbt_updated_at
+        end                     as flag_sem_dados_gee,
+        current_timestamp       as dbt_updated_at
 
     from semanas s
     left join validado g
         on date_trunc('month', s.data_se) = date_trunc('month', g.data_mes)
-    where dayofweek(s.data_se) = 0
 )
 
 select * from expandido

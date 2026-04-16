@@ -1,6 +1,11 @@
 -- macros/cast_date.sql
 -- Converte qualquer campo para DATE de forma padronizada
 
+-- Converte qualquer campo para DATE de forma padronizada
+{% macro cast_date(column) %}
+    cast({{ column }} as date)
+{% endmacro %}
+
 -- Calcula o primeiro domingo a partir de uma data
 {% macro primeiro_domingo(date_str) %}
     cast({{ date_str }} as date) + 

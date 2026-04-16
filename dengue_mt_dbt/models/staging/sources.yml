@@ -50,3 +50,11 @@ sources:
         description: "GEE NDVI/NDWI blend Sentinel-2 + MODIS"
         meta:
           external_location: "read_parquet('{{ var(\"bronze_path\") }}/gee/gee_ndvi_ndwi_blend_2018_2024.parquet')"
+  
+  - name: bronze_modis
+    description: "MODIS MOD13A3 — NDVI e EVI mensais 1km via AppEEARS NASA. Período 2018→atual."
+    tables:
+      - name: modis_latest
+        description: "MODIS NDVI/EVI — Cuiabá + Várzea Grande 2018→atual"
+        meta:
+          external_location: "read_parquet('{{ var('bronze_path') }}/modis/modis_ndvi_evi_latest.parquet')"

@@ -19,8 +19,8 @@ trends as (
     select * from {{ ref('stg_trends') }}
 ),
 
-gee as (
-    select * from {{ ref('stg_gee') }}
+modis as (
+    select * from {{ ref('stg_modis') }}
 ),
 
 -- Join principal: InfoDengue como âncora (casos + clima ERA5)
@@ -73,10 +73,11 @@ joined as (
         -- Google Trends
         t.trends_dengue,
 
-        -- GEE
-        g.ndvi,
-        g.ndwi,
-        g.flag_sem_dados_gee
+        -- Modis
+        m.ndvi,
+        m.evi,
+        m.pixel_reliability                 as modis_pixel_reliability,
+        m.flag_qualidade_ruim               as modis_flag_qualidade_ruim
 
     from infodengue i
     left join nasa n
@@ -86,8 +87,9 @@ joined as (
         on i.data_se = o.data_se
     left join trends t
         on i.data_se = t.data_se
-    left join gee g
-        on i.data_se = g.data_se
+    left join modis m
+        on i.data_se = m.data_se
+        and i.municipio_id = m.municipio_id
 )
 
 select * from joined

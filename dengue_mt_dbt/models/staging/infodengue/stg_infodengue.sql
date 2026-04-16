@@ -24,7 +24,7 @@ padronizado as (
         municipio                                       as municipio_nome,
 
         -- Data — Bronze usa data_iniSE
-        {{ cast_epoch_ms('data_iniSE') }}               as data_se,
+        {{ inicio_se('epoch_ms(data_iniSE)::date') }}   as data_se,
         cast(SE as integer)                             as semana_epidemiologica,
 
         -- Casos
@@ -59,16 +59,37 @@ padronizado as (
 ),
 
 filtrado as (
-    select *
+    select
+        municipio_id,
+        municipio_nome,
+        data_se,
+        -- Em caso de duplicata após normalização, mantém o maior valor de casos
+        max(semana_epidemiologica)          as semana_epidemiologica,
+        max(casos_confirmados)              as casos_confirmados,
+        max(casos_estimados)                as casos_estimados,
+        max(casos_confirmados_lab)          as casos_confirmados_lab,
+        max(prob_rt_maior_1)                as prob_rt_maior_1,
+        max(rt_index)                       as rt_index,
+        max(nivel_alerta)                   as nivel_alerta,
+        max(receptivo)                      as receptivo,
+        max(transmissao)                    as transmissao,
+        max(incidencia_100k)                as incidencia_100k,
+        max(notificacoes_acumuladas_ano)    as notificacoes_acumuladas_ano,
+        avg(temp_media)                     as temp_media,
+        avg(temp_max)                       as temp_max,
+        avg(temp_min)                       as temp_min,
+        avg(umidade_media)                  as umidade_media,
+        avg(umidade_max)                    as umidade_max,
+        avg(umidade_min)                    as umidade_min,
+        max(populacao)                      as populacao,
+        max(dbt_updated_at)                 as dbt_updated_at
     from padronizado
     where
-        -- Apenas municípios definidos
         municipio_id in ({{ var('municipios') | join(', ') }})
-        -- Período definido nas decisões: 2018→2025
-        and data_se >= cast('{{ var("data_inicio") }}' as date)
-        and data_se <= cast('{{ var("data_fim") }}' as date)
-        -- Sem casos negativos
+        and data_se >= {{ cast_date("'" ~ var('data_inicio') ~ "'") }}
+        and data_se <= {{ cast_date("'" ~ var('data_fim') ~ "'") }}
         and casos_confirmados >= 0
+    group by municipio_id, municipio_nome, data_se
 )
 
 select * from filtrado

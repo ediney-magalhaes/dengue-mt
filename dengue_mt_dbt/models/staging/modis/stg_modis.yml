@@ -1,0 +1,57 @@
+version: 2
+
+models:
+  - name: stg_modis
+    description: >
+      MODIS MOD13A3.061 — NDVI e EVI mensais 1km via AppEEARS NASA.
+      Valores escalados (÷10000) conforme especificação MODIS.
+      Granularidade mensal expandida para SE brasileira (repetição).
+      Período: 2018→atual. Municípios: Cuiabá (5103403) + Várzea Grande (5108402).
+      Referência: Sebastianelli et al. 2024 — MODIS MOD13A3 para modelos
+      preditivos de dengue no Brasil.
+
+    tests:
+      - unique:
+          column_name: "municipio_id || '-' || data_se::varchar"
+          name: unique_municipio_data_se_modis
+
+    columns:
+      - name: data_se
+        description: "Data de início da SE (domingo)"
+        tests:
+          - not_null
+
+      - name: municipio_id
+        description: "Código IBGE do município"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [5103403, 5108402]
+
+      - name: ndvi
+        description: "NDVI mensal MODIS (-1 a +1) — escalonado ÷10000"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -1
+              max_value: 1
+              where: "ndvi is not null"
+
+      - name: evi
+        description: "EVI mensal MODIS (-1 a +1) — escalonado ÷10000"
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: -1
+              max_value: 1
+              where: "evi is not null"
+
+      - name: pixel_reliability
+        description: "Qualidade do pixel: 0=bom, 1=marginal, 2=neve/gelo, 3=nuvem"
+        tests:
+          - accepted_values:
+              values: [0, 1, 2, 3]
+              where: "pixel_reliability is not null"
+
+      - name: flag_qualidade_ruim
+        description: "True se pixel_reliability > 1 (neve, gelo ou nuvem)"
+        tests:
+          - not_null

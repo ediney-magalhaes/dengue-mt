@@ -65,9 +65,8 @@ validado as (
     from com_data
     where
         data_inicio_trimestre is not null
-        and data_inicio_trimestre >= cast('{{ var("data_inicio") }}' as date)
-        and data_inicio_trimestre <= cast('{{ var("data_fim") }}' as date)
-
+        --and data_inicio_trimestre >= cast('{{ var("data_inicio") }}' as date)
+        --and data_inicio_trimestre <= cast('{{ var("data_fim") }}' as date)
         -- Faixa válida para ONI (-4 a +4)
         and oni_index between -4 and 4
 ),
@@ -78,9 +77,11 @@ semanas as (
     select
         unnest(
             generate_series(
-                cast('{{ var("data_inicio") }}' as date)
-                    + cast((7 - dayofweek(cast('{{ var("data_inicio") }}' as date))) % 7 as integer),
-                cast('{{ var("data_fim") }}' as date),
+                cast('2017-10-01' as date),
+                {{ cast_date("'" ~ var('data_fim') ~ "'") }},
+                --cast('{{ var("data_inicio") }}' as date)
+                --    + cast((7 - dayofweek(cast('{{ var("data_inicio") }}' as date))) % 7 as integer),
+                --cast('{{ var("data_fim") }}' as date),
                 interval '7 days'
             )
         )::date as data_se

@@ -706,13 +706,141 @@ tables:
 
 ---
 
+---
+
+## Substituição GEE → MODIS via AppEEARS NASA (13-15/04/2026)
+
+**Data:** 13-15/04/2026
+
+### Problema identificado
+GEE (Google Earth Engine) coletado manualmente até 2024 — sem automação
+possível sem conta aprovada. Dados de 2025 ausentes comprometiam o dataset
+de treino. GEE não é compatível com a premissa de custo zero e automação total.
+
+### Decisão: MODIS MOD13A3 via AppEEARS NASA Earthdata
+
+**Produto:** MOD13A3.061 — NDVI e EVI mensais 1km
+**API:** AppEEARS (Application for Extracting and Exploring Analysis Ready Samples)
+**Conta:** NASA Earthdata — gratuita, aprovação imediata
+**Cobertura:** 2000→hoje (automático, sem intervenção manual)
+**Custo:** zero
+
+**Justificativa:**
+- Mesma fonte MODIS que o GEE original usava como complemento
+- API totalmente automática — compatível com pipeline semanal
+- NDVI e EVI disponíveis — EVI é mais robusto em vegetação densa (Huete et al. 2002)
+- Metadados de qualidade por pixel (`pixel_reliability`) permitem filtrar
+  dados de baixa qualidade (nuvens, neve, gelo)
+
+**Referência:** Sebastianelli et al. 2024 (Scientific Reports) — MODIS MOD13A3
+para modelos preditivos de dengue no Brasil.
+
+**Implementação:**
+- `src/ingestion/modis.py` — módulo de ingestão Bronze via AppEEARS
+- `dengue_mt_dbt/models/staging/modis/stg_modis.sql` — transformação Bronze→Silver
+- Bronze: `data/bronze/modis/modis_ndvi_evi_latest.parquet`
+- 198 registros (99 meses × 2 municípios) | 2018-01-01 → 2026-03-01
+
+---
+
+## Macros dbt — Padronização de Tipos de Data (13/04/2026)
+
+**Data:** 13/04/2026
+
+### Problema identificado
+Joins entre stagings falhavam silenciosamente (0% de cobertura) porque cada
+fonte convertia `data_se` de forma diferente — tipos incompatíveis impediam
+o match no intermediate.
+
+### Decisão: macros dbt para padronização
+
+Arquivo `dengue_mt_dbt/macros/cast_date.sql` com 4 macros:
+
+| Macro | Uso | Justificativa |
+|---|---|---|
+| `cast_date(column)` | Converte qualquer campo para DATE | Padronização geral |
+| `cast_epoch_ms(column)` | Timestamp ms → DATE | InfoDengue retorna BIGINT |
+| `inicio_se(column)` | Calcula domingo da SE | Portaria SVS/MS nº 5/2010 |
+| `primeiro_domingo(date_str)` | Primeiro domingo após uma data | `generate_series` a partir de domingo |
+
+**Impacto:** todos os stagings usam as mesmas macros — tipos `DATE` consistentes
+em toda a pipeline, joins funcionando corretamente.
+
+---
+
+## Correções de Qualidade nos Stagings (13-15/04/2026)
+
+**Data:** 13-15/04/2026
+
+### Decisão 1: Filtro de período pertence ao marts, não ao staging
+
+**Problema:** stg_oni filtrava `data_inicio_trimestre >= 2018-01-01` —
+descartando o trimestre DJF cujo início é `2017-12-01` mas cujos dados
+cobrem janeiro/2018. Resultado: primeiras 4 SEs de janeiro/2018 sem ONI.
+
+**Correção:** Removido filtro de período do `stg_oni.sql`. `generate_series`
+expandido para `2017-10-01` para cobrir trimestres anteriores a 2018.
+
+**Princípio estabelecido:** staging padroniza e limpa — nunca filtra por
+período. Filtro de período é responsabilidade exclusiva do marts.
+
+### Decisão 2: Normalização defensiva de datas no InfoDengue
+
+**Problema:** InfoDengue retornou 1 registro com data irregular `2018-04-04`
+(quarta-feira) em vez de domingo — causando NULL no join com NASA POWER.
+
+**Correção:** `{{ inicio_se('epoch_ms(data_iniSE)::date') }}` normaliza
+qualquer data para o domingo da SE correspondente. `GROUP BY` adicionado
+para resolver duplicata gerada pela normalização.
+
+**Impacto:** correção defensiva e automática — protege contra futuras
+irregularidades na API InfoDengue sem intervenção manual.
+
+### Decisão 3: Trends como limitação conhecida e documentada
+
+**Situação:** Google Trends API retorna apenas últimos 90 dias.
+Para o dataset histórico 2018→2025: Trends = 100% NULL.
+
+**Decisão:** Aceitar NULL e documentar como limitação — não comprometer
+a pipeline esperando uma solução perfeita. LightGBM lida com NULL nativamente.
+
+**Mitigação planejada:** reconstruir série histórica via pytrends com
+overlapping windows de 90 dias (próxima sessão).
+
+**Para o artigo:** reportar importância de feature via SHAP separadamente
+para período com/sem Trends disponível.
+
+---
+
+## Resultado intermediate — Cobertura 100% (15/04/2026)
+
+**Data:** 15/04/2026
+
+### Resultado final após todas as correções
+
+| Fonte | Cobertura | Status |
+|---|---|---|
+| InfoDengue (casos + clima ERA5) | 100% | ✅ |
+| NASA POWER (clima completo) | 100% | ✅ |
+| ONI Index (ENSO) | 100% | ✅ |
+| MODIS NDVI/EVI | 100% | ✅ |
+| Google Trends | 0% | ⚠️ Limitação conhecida |
+
+416 semanas × 2 municípios = 832 registros
+Período: 2018-01-07 → 2025-12-28
+
+**Decisão:** avançar para marts com dataset completo nas 4 fontes principais.
+Trends será reconstruído via pytrends na próxima sessão antes do treinamento.
+
+---
+
 ## Próximas decisões pendentes
 
-- [ ] Modelos intermediate — joins entre fontes + lags epidemiológicos
+- [ ] Reconstruir série histórica Trends 2018→2025 via pytrends overlapping windows
 - [ ] Modelo marts — Gold final para ML (dataset_features_v5)
+- [ ] Lags epidemiológicos no marts (temperatura 2-4 SE, precipitação 1-3 SE, etc.)
 - [ ] Treinamento LightGBM v5 com Gold correto
 - [ ] Atualizar pipeline Prefect para usar dbt run
-- [ ] Silver histórico Trends no HF Hub
 - [ ] Aumentar limiar mínimo drift de 8 para 26 SE (julho/2026)
 - [ ] Restaurar `test_modelo_r2_minimo` para 0.50 após modelo estabilizar
 - [ ] Seed global e ambiente fixo para reprodutibilidade total

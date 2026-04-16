@@ -1105,5 +1105,88 @@ dbt test --select staging → PASS=37 WARN=0 ERROR=0
 
 ---
 
+## 📅 Semana 12: Ingestão da camada Bronze
+
+## Sessão 13/04/2026 e 15/04/2026 — Qualidade de dados, MODIS e intermediate 100%
+
+### Contexto
+Continuação da refatoração v2.0. Foco em garantir qualidade e completude
+dos dados antes de construir o modelo marts e treinar o LightGBM v5.
+
+### Problema identificado — joins com 0% de cobertura
+
+Após rodar o intermediate pela primeira vez, auditoria revelou:
+- ONI: 0% de cobertura — filtro de período no staging descartava trimestre DJF
+- GEE: 0% de cobertura — `dayofweek()` eliminava todas as semanas geradas
+- Trends: 0% de cobertura — API retorna apenas últimos 90 dias (2026)
+
+**Causa raiz:** filtros de período aplicados incorretamente no staging.
+Decisão arquitetural: staging deve apenas padronizar — filtro de período
+pertence ao marts (camada final para ML).
+
+### Macros dbt criadas
+
+Arquivo `dengue_mt_dbt/macros/cast_date.sql` com 4 macros padronizadas:
+- `cast_date(column)` — converte qualquer campo para DATE
+- `cast_epoch_ms(column)` — converte timestamp ms (InfoDengue) para DATE
+- `inicio_se(column)` — calcula domingo da SE (Portaria SVS/MS nº 5/2010)
+- `primeiro_domingo(date_str)` — primeiro domingo a partir de uma data
+
+### Correções nos stagings
+
+**stg_oni.sql:**
+- Removido filtro de período do bloco `validado`
+- `generate_series` expandido para `2017-10--01` para cobrir trimestre DJF
+- Resultado: ONI 100% de cobertura ✅
+
+**stg_gee.sql e stg_oni.sql:**
+- Substituído `dayofweek() = 0` por macro `primeiro_domingo()`
+- Resultado: semanas geradas corretamente a partir do domingo ✅
+
+**stg_infodengue.sql:**
+- Identificado 1 registro irregular: `2018-04-04` (quarta-feira) em Cuiabá
+- Corrigido via `inicio_se('epoch_ms(data_iniSE)::date')` — normaliza
+  qualquer data para o domingo da SE correspondente
+- Adicionado `GROUP BY` no `filtrado` para resolver duplicata após normalização
+- Resultado: InfoDengue sem duplicatas, data irregular corrigida ✅
+
+### Substituição GEE → MODIS
+
+**Problema:** GEE coletado manualmente até 2024, sem automação possível
+sem conta aprovada no Google Earth Engine.
+
+**Solução:** MODIS MOD13A3.061 via AppEEARS NASA Earthdata
+- Conta criada: `ediney_dengue` (edy.estatistica@gmail.com)
+- Produto: MOD13A3.061 — NDVI e EVI mensais 1km
+- Cobertura: 2000→hoje (automático)
+- Custo: zero
+- Novo módulo: `src/ingestion/modis.py`
+- Bronze: `data/bronze/modis/modis_ndvi_evi_latest.parquet`
+- 198 registros (99 meses × 2 municípios) | 2018-01-01 → 2026-03-01
+
+### Resultado final — intermediate 100%
+```
+municipio_id  total_semanas  pct_nasa  pct_oni  pct_trends  pct_modis
+5103403       416            100.0     100.0    0.0         100.0
+5108402       416            100.0     100.0    0.0         100.0
+```
+Trends = 0% é limitação conhecida e documentada — API retorna apenas
+últimos 90 dias. LightGBM lida com NULL nativamente. Trends disponível
+para previsões futuras (2026+).
+
+### Commits desta sessão
+- (27) feat: macros dbt + staging corrigido PASS=37 + intermediate
+- (28) feat: src/ingestion/modis.py — MODIS NDVI/EVI via AppEEARS NASA
+- (29) feat: staging + intermediate 100% — MODIS, ONI, NASA, InfoDengue
+
+### Pendências para próxima sessão
+1. Reconstruir série histórica Trends 2018→2025 via pytrends overlapping windows
+2. Modelo marts — Gold final para ML
+3. Treinamento LightGBM v5
+4. Atualizar pipeline Prefect para usar dbt
+5. Merge dev → main
+
+---
+
 *Instituto Federal de Mato Grosso (IFMT)*
 *Projeto Extensionista — Dengue MT*

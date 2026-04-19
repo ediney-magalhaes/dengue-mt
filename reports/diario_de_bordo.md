@@ -1186,6 +1186,68 @@ para previsões futuras (2026+).
 4. Atualizar pipeline Prefect para usar dbt
 5. Merge dev → main
 
+
+## Sessão 18/04/2026 — Trends histórico + marts + Gold v5
+
+### Contexto
+Continuação da refatoração v2.0. Sessão focada em completar o pipeline dbt e gerar o Gold final para treinamento do LightGBM v5.
+
+### Reconstrução série histórica Google Trends
+
+Técnica: overlapping windows com normalização por fator de alinhamento.
+Referência: Scientific Data (Nature) 2026 — metodologia validada para
+vigilância epidemiológica digital no Brasil.
+
+**Parâmetros:**
+- Janelas de 270 dias com overlap de 180 dias
+- 33 janelas processadas | fatores de normalização calculados
+- Período reconstruído: 2018-01-01 → 2025-12-31
+- 457 semanas | Bronze: `trends_dengue_historico_2018_2025.parquet`
+
+**Resultado:** Trends passou de 0% para 100% de cobertura no intermediate.
+
+### Modelo marts — Gold final para ML
+
+`mart_dengue_features.sql` criado com:
+- 54 features × 412 semanas × 2 municípios = 824 registros
+- Período: 2018-02-04 → 2025-12-28
+- Todos os indicadores epidemiológicos lagados (anti-leakage)
+- Lags climáticos conforme literatura (Hii et al. 2012)
+- Médias móveis temperatura e precipitação (4 e 8 SE)
+- Features autoregressivas de casos (lag 1-4 SE)
+
+**Testes:** PASS=7 WARN=0 ERROR=0
+
+### Cobertura final intermediate
+```
+municipio_id  pct_nasa  pct_oni  pct_trends  pct_modis
+5103403       100.0     100.0    100.0       100.0
+5108402       100.0     100.0    100.0       100.0
+```
+### Gold v5 publicado
+
+- Local: `data/gold/dataset_features_v5_2026-04-18.parquet`
+- HF Hub: `edyestatistica/dengue-mt-medallion`
+- Script: `scripts/exportar_gold.py`
+
+### Pipeline dbt completo
+```
+dbt run  → PASS=9  WARN=0 ERROR=0
+dbt test → PASS=62 WARN=0 ERROR=0
+```
+
+### Commits desta sessão
+- (31) feat: Trends histórico 100% + intermediate cobertura 100%
+- (32) feat: mart_dengue_features — Gold 54 features 412 SE PASS=7
+- (33) feat: exportar_gold.py — Gold v5 publicado HF Hub
+
+### Pendências para próxima sessão
+1. Treinamento LightGBM v5 com Gold v5
+2. Avaliação do modelo (TimeSeriesSplit 5 folds)
+3. Atualizar pipeline Prefect para usar dbt run
+4. Merge dev → main
+5. Relatório extensionista IFMT
+
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

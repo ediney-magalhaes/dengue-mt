@@ -28,6 +28,48 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.0.0-dev] — 2026-04-18
+
+### Contexto
+Conclusão da refatoração v2.0 — pipeline dbt completo com cobertura 100%
+em todas as fontes. Gold v5 gerado e publicado no HF Hub.
+
+### Adicionado
+- `scripts/reconstruir_trends_historico.py` — reconstrução série histórica
+  Google Trends 2018→2025 via overlapping windows (Scientific Data Nature 2026)
+- `src/ingestion/modis.py` — MODIS NDVI/EVI via AppEEARS NASA Earthdata
+- `dengue_mt_dbt/models/staging/modis/` — stg_modis.sql + yml
+- `dengue_mt_dbt/models/staging/trends/stg_trends_historico.sql` + yml
+- `dengue_mt_dbt/models/intermediate/int_dengue_mt.sql` — joins completos
+- `dengue_mt_dbt/models/marts/mart_dengue_features.sql` + yml — Gold final ML
+- `dengue_mt_dbt/macros/cast_date.sql` — 4 macros de padronização de datas
+- `scripts/exportar_gold.py` — exporta DuckDB → Parquet + publica HF Hub
+- `scripts/auditoria_intermediate.py` — auditoria de cobertura por fonte
+
+### Cobertura final intermediate
+```
+NASA POWER:  100% ✅
+ONI Index:   100% ✅
+MODIS NDVI:  100% ✅ (substituiu GEE)
+Trends:      100% ✅ (série histórica reconstruída)
+```
+### Gold v5
+- 824 registros (412 SE × 2 municípios)
+- 54 features com lags epidemiológicos anti-leakage
+- Período: 2018-02-04 → 2025-12-28
+- HF Hub: `edyestatistica/dengue-mt-medallion`
+
+### Pipeline dbt completo
+```
+dbt run  → PASS=9  WARN=0 ERROR=0
+dbt test → PASS=62 WARN=0 ERROR=0
+```
+
+### Status
+Em desenvolvimento — próximo: treinamento LightGBM v5
+
+---
+
 ## [2.0.0-dev] — 2026-04-08 (continuação)
 
 ### Refatoração src/ingestion — responsabilidade única Bronze

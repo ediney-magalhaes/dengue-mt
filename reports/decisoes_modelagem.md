@@ -834,13 +834,82 @@ Trends será reconstruído via pytrends na próxima sessão antes do treinamento
 
 ---
 
+## Reconstrução Série Histórica Google Trends — Overlapping Windows (18/04/2026)
+
+**Data:** 18/04/2026
+
+### Problema identificado
+Google Trends API retorna apenas 90 dias históricos — série 2018→2025 completamente ausente no dataset de treino (0% de cobertura).
+
+### Decisão: overlapping windows com normalização por fator de alinhamento
+
+**Técnica:** janelas sobrepostas de 270 dias com overlap de 180 dias. Fator de normalização calculado no período de sobreposição entre janelas
+consecutivas, permitindo reconstrução de série contínua e comparável.
+
+**Parâmetros:**
+- Janela: 270 dias | Overlap: 180 dias | Passo: 90 dias
+- Total de janelas: 33 | Período: 2018-01-01 → 2025-12-31
+
+**Referência:** Scientific Data (Nature) 2026 — metodologia validada especificamente para dados de vigilância epidemiológica digital no Brasil.
+Althouse et al. 2011 (PLoS NTD) — Google Trends para dengue.
+
+**Justificativa acadêmica:** técnica amplamente utilizada na literatura de infodemiology para reconstrução de séries históricas do Google Trends.
+O fator de normalização garante comparabilidade entre janelas extraídas em momentos diferentes, corrigindo a escala relativa (0-100) de cada extração.
+
+**Implementação:**
+- `scripts/reconstruir_trends_historico.py` — script operacional
+- Bronze: `data/bronze/trends/trends_dengue_historico_2018_2025.parquet`
+- Staging: `stg_trends_historico.sql` com lag 7d anti-leakage
+- Resultado: 457 semanas | 2018-01-07 → 2025-12-31
+
+**Impacto:** Trends passou de 0% para 100% de cobertura no intermediate.
+
+---
+
+## Gold v5 — Features e Lags Epidemiológicos (18/04/2026)
+
+**Data:** 18/04/2026
+
+### Decisão: mart_dengue_features com lags anti-leakage
+
+**Problema:** versões anteriores do Gold incluíam indicadores epidemiológicos sem lag — `rt_index`, `nivel_alerta`, `receptivo` calculados com base nos
+casos da própria SE causavam data leakage silencioso.
+
+**Decisão:** todos os indicadores epidemiológicos aplicados com lag mínimo 1 SE.
+
+**Features do Gold v5:**
+
+| Grupo | Features | Lags |
+|---|---|---|
+| Target | `casos_confirmados`, `casos_estimados`, `incidencia_100k` | — |
+| Epidemiológico | `rt_index`, `nivel_alerta`, `receptivo`, `transmissao` | lag 1 |
+| Temperatura ERA5 | `temp_media`, `temp_max`, `temp_min` | lag 1-4 |
+| Umidade ERA5 | `umidade_media` | lag 1-2 |
+| NASA POWER | `precipitacao_total`, `radiacao_mj`, `umidade_nasa` | lag 1-4 |
+| Médias móveis | `temp_media_mm4/mm8`, `precip_acum4/acum8` | — |
+| ONI/ENSO | `oni_index`, `fase_enso_num` | lag 4-8 |
+| MODIS | `ndvi`, `evi` | lag 2-4 |
+| Trends | `trends_dengue` | lag 1-2 |
+| Autoregressivo | `casos_confirmados`, `casos_mm4` | lag 1-4 |
+
+**Referências:**
+- Hii et al. 2012 — temperatura lag 2-4 SE, precipitação lag 1-3 SE
+- Codeco et al. 2018 — nowcasting InfoDengue, lags epidemiológicos
+- Sebastianelli et al. 2024 — MODIS NDVI lag 2-4 SE
+
+**Resultado:**
+- 54 features × 412 SE × 2 municípios = 824 registros
+- Período: 2018-02-04 → 2025-12-28
+- Primeiras 4 SEs removidas (lag4 insuficiente)
+- HF Hub: `edyestatistica/dengue-mt-medallion/gold/dataset_features_v5_latest.parquet`
+
+---
+
 ## Próximas decisões pendentes
 
-- [ ] Reconstruir série histórica Trends 2018→2025 via pytrends overlapping windows
-- [ ] Modelo marts — Gold final para ML (dataset_features_v5)
-- [ ] Lags epidemiológicos no marts (temperatura 2-4 SE, precipitação 1-3 SE, etc.)
-- [ ] Treinamento LightGBM v5 com Gold correto
+- [ ] Treinamento LightGBM v5 — avaliação com TimeSeriesSplit 5 folds
 - [ ] Atualizar pipeline Prefect para usar dbt run
+- [ ] Merge dev → main
 - [ ] Aumentar limiar mínimo drift de 8 para 26 SE (julho/2026)
 - [ ] Restaurar `test_modelo_r2_minimo` para 0.50 após modelo estabilizar
 - [ ] Seed global e ambiente fixo para reprodutibilidade total

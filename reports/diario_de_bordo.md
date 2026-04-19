@@ -1248,6 +1248,80 @@ dbt test → PASS=62 WARN=0 ERROR=0
 4. Merge dev → main
 5. Relatório extensionista IFMT
 
+
+## Sessão 19/04/2026 — Treinamento, avaliação e registro LightGBM v5
+
+### Contexto
+Continuação da refatoração v2.0. Sessão focada em treinamento,
+otimização e avaliação formal do modelo LightGBM v5.
+
+### Treinamento LightGBM v5
+
+**Script:** `scripts/treinar_lgbm_v5.py`
+```
+R² médio (TimeSeriesSplit 5 folds): 0.741 ± 0.081
+MAE médio: 9.7 ± 6.2 casos/semana
+47 features | Gold v5 | 2018-2025
+```
+
+Por fold:
+- Fold 1: R²=0.722 MAE=8.3
+- Fold 2: R²=0.621 MAE=16.4 (COVID/2021)
+- Fold 3: R²=0.779 MAE=3.7
+- Fold 4: R²=0.868 MAE=2.7
+- Fold 5: R²=0.716 MAE=17.6 (surto 2024/2025)
+
+### Otimização via Optuna + Feature Selection SHAP
+
+Modelos separados por município com transformação log1p no target:
+
+| Município | Baseline | Otimizado | + Feature sel | Features |
+|---|---|---|---|---|
+| Cuiabá | 0.626 | 0.702 | 0.726 | 12 |
+| Várzea Grande | 0.415 | 0.525 | 0.554 | 11 |
+
+Várzea Grande tem R² menor por alta esparsidade (33 semanas zeradas)
+e surto explosivo 2023-2025 — dinâmica epidemiológica distinta.
+
+### Avaliação Rolling Window
+
+R² negativo em todos os horizontes — confirmado pela literatura:
+IMDC24 (PNAS 2026) reporta que nenhuma equipe internacional excelu
+no surto atípico de 2024/2025.
+
+### Análise SHAP
+
+Top features por município:
+
+| Rank | Cuiabá | % | Várzea Grande | % |
+|---|---|---|---|---|
+| 1 | casos_mm4 | 46.5% | casos_mm4 | 45.4% |
+| 2 | casos_lag1 | 9.5% | casos_lag1 | 10.6% |
+| 3 | casos_lag2 | 5.9% | casos_lag2 | 3.7% |
+| 4 | trends_lag2 | 4.8% | casos_lag3 | 3.5% |
+| 5 | casos_lag3 | 4.0% | notif_acum_ano | 2.4% |
+
+Top 5 features: 70.6% (CWB) e 65.6% (VG) da importância total.
+Google Trends confirmado como sinal antecipado relevante.
+
+### Registro formal do modelo
+
+- `models/lgbm_v5_producao.pkl` — modelo final
+- `models/lgbm_v5_feature_schema.json` — schema com métricas e hashes
+- HF Hub: `edyestatistica/dengue-mt-medallion/models/`
+
+### Commits desta sessão
+- (35) feat: avaliação modelos v5 — TSCV, rolling window, Optuna
+- (36) feat: análise SHAP v5 — casos_mm4 46%, Trends confirmado
+- (37) feat: registro formal modelo v5 — schema + HF Hub publicado
+
+### Pendências para próxima sessão
+1. Atualizar pipeline Prefect para usar dbt run
+2. Atualizar dashboard com modelo v5
+3. Relatório extensionista IFMT
+4. Artigo SENIC 2026
+5. Merge dev → main
+
 ---
 
 *Instituto Federal de Mato Grosso (IFMT)*

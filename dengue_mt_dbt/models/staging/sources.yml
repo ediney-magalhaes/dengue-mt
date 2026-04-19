@@ -42,6 +42,10 @@ sources:
         description: "Google Trends mais recente"
         meta:
           external_location: "read_parquet('{{ var(\"bronze_path\") }}/trends/trends_dengue_latest.parquet')"
+      - name: trends_historico
+        description: "Google Trends histórico 2018→2025 via overlapping windows"
+        meta:
+          external_location: "read_parquet('{{ var(\"bronze_path\") }}/trends/trends_dengue_historico_2018_2025.parquet')"
 
   - name: bronze_gee
     description: "Google Earth Engine — NDVI, NDWI mensal 2018→2024"
@@ -57,4 +61,4 @@ sources:
       - name: modis_latest
         description: "MODIS NDVI/EVI — Cuiabá + Várzea Grande 2018→atual"
         meta:
-          external_location: "read_parquet('{{ var('bronze_path') }}/modis/modis_ndvi_evi_latest.parquet')"
+          external_location: "read_parquet('{{ var(\"bronze_path\") }}/modis/modis_ndvi_evi_latest.parquet')"

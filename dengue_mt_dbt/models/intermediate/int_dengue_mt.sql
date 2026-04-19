@@ -16,7 +16,7 @@ oni as (
 ),
 
 trends as (
-    select * from {{ ref('stg_trends') }}
+    select * from {{ ref('stg_trends_historico') }}
 ),
 
 modis as (
@@ -71,7 +71,7 @@ joined as (
         o.fase_enso_num,
 
         -- Google Trends
-        t.trends_dengue,
+        t.trends_dengue_historico           as trends_dengue,
 
         -- Modis
         m.ndvi,

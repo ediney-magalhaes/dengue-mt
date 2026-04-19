@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: stg_trends_historico
+    description: >
+      Google Trends histórico 2018→2025 reconstruído via overlapping windows
+      com normalização por fator de alinhamento no período de sobreposição.
+      Lag obrigatório de 7 dias aplicado (anti-leakage operacional).
+      Referência: Scientific Data (Nature) 2026 — metodologia de alinhamento
+      de curvas para vigilância epidemiológica digital no Brasil.
+
+    columns:
+      - name: data_se
+        description: "Data de início da SE com lag 7 dias aplicado (domingo)"
+        tests:
+          - not_null
+          - unique
+
+      - name: trends_dengue_historico
+        description: "Índice Google Trends normalizado (0-100) — série histórica"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+              max_value: 100

@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: mart_dengue_features
+    description: >
+      Gold final para ML — dataset de features para LightGBM v5.
+      Período: 2018→2025. Municípios: Cuiabá (5103403) + Várzea Grande (5108402).
+      Inclui lags epidemiológicos conforme literatura:
+      Hii et al. 2012 (temperatura lag 2-4 SE, precipitação lag 1-3 SE),
+      Codeco et al. 2018 (nowcasting InfoDengue).
+      Todos os indicadores epidemiológicos lagados para evitar data leakage.
+
+    tests:
+      - unique:
+          column_name: "municipio_id || '-' || data_se::varchar"
+          name: unique_municipio_data_se_gold
+
+    columns:
+      - name: municipio_id
+        description: "Código IBGE do município"
+        tests:
+          - not_null
+          - accepted_values:
+              values: [5103403, 5108402]
+
+      - name: data_se
+        description: "Data de início da SE (domingo)"
+        tests:
+          - not_null
+
+      - name: casos_confirmados
+        description: "Target — casos confirmados de dengue na SE"
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 0
+
+      - name: casos_lag1
+        description: "Casos confirmados SE anterior (lag 1)"
+        tests:
+          - not_null
+
+      - name: temp_media_lag1
+        description: "Temperatura média lag 1 SE — ERA5 via InfoDengue"
+
+      - name: precip_lag1
+        description: "Precipitação acumulada lag 1 SE — NASA POWER"
+
+      - name: oni_lag4
+        description: "ONI Index lag 4 SE — ciclo climático regional"
+
+      - name: ndvi_lag2
+        description: "NDVI lag 2 SE — MODIS MOD13A3"
+
+      - name: trends_lag1
+        description: "Google Trends lag 1 SE — já com lag 7d do staging"

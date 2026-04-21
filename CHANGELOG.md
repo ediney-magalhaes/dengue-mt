@@ -70,6 +70,38 @@ Em desenvolvimento — próximo: treinamento LightGBM v5
 
 ---
 
+## [2.0.0-dev] — 2026-04-19
+
+### LightGBM v5 — Treinamento e Avaliação
+
+**Modelo:** `models/lgbm_v5_producao.pkl`
+**Dataset:** `gold/dataset_features_v5_2026-04-19.parquet`
+**Schema:** `models/lgbm_v5_feature_schema_2026-04-19.json`
+
+### Métricas
+- R²=0.741 ± 0.081 | MAE=9.7 ± 6.2 casos/semana
+- Validação: TimeSeriesSplit 5 folds | 2018→2025
+- Transformação: log1p(y) — reduz impacto de surtos atípicos
+- Nota: R² competitivo com IMDC24 (PNAS 2026) — nenhuma equipe
+  internacional excelu no surto histórico de 2024/2025
+
+### SHAP — Importância de Features
+- casos_mm4: 46.5% (Cuiabá) / 45.4% (Várzea Grande)
+- Top 5 features: 70.6% da importância total
+- Google Trends confirmado como sinal antecipado relevante
+- MODIS NDVI removido pelo SHAP — sinal redundante com lags climáticos
+
+### Adicionado
+- `scripts/treinar_lgbm_v5.py` — treinamento base
+- `scripts/otimizar_lgbm_v5.py` — Optuna + SHAP feature selection
+- `scripts/analisar_shap.py` — análise SHAP completa
+- `scripts/avaliar_rolling_window.py` — avaliação múltiplos horizontes
+- `scripts/registrar_modelo_v5.py` — registro formal + HF Hub
+- `reports/shap/` — gráficos beeswarm e barras por município
+- `models/lgbm_v5_feature_schema.json` — schema com métricas e hashes
+
+---
+
 ## [2.0.0-dev] — 2026-04-08 (continuação)
 
 ### Refatoração src/ingestion — responsabilidade única Bronze

@@ -28,6 +28,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.0.0-dev] — 2026-04-21
+
+### Contexto
+Refatoração do pipeline Prefect para arquitetura v2.0 completa —
+integração do dbt run como etapa central de transformação,
+substituindo o build_gold_dataset ad-hoc. Organização do repositório
+com archive de notebooks, scripts e figuras do dataset v1.
+
+### Adicionado
+- `src/tasks/dbt_runner.py` — task Prefect para executar `dbt run` + `dbt test`
+- `src/tasks/ingestao.py` — refatorado: 5 fontes Bronze, sem transformações Silver
+- `src/tasks/ingestao.py` — `ingerir_modis()` adicionado como quinta fonte
+
+### Alterado
+- `src/pipeline_prefect.py` — `build_gold_dataset` substituído por `dbt run`
+- `src/pipeline_prefect.py` — encerramento antecipado se `dbt run` falhar
+  (Gold e modelo anteriores preservados em produção)
+- `src/pipeline_prefect.py` — `ingerir_inmet` → `ingerir_infodengue` + `ingerir_modis`
+- `src/config.py` — versões atualizadas para v5 (pipeline 2.0.0-dev, dataset v5, lgbm_v5)
+- `src/config.py` — `ATRASOS_FONTES` atualizado: removidos `gee_ndvi` e `inmet`,
+  adicionado `modis`
+- `src/config.py` — `MODIS_USUARIO` e `MODIS_SENHA` via variáveis de ambiente
+
+### Arquivado
+- `src/tasks/build_gold.py` → `src/tasks/archive/`
+- `src/tasks/gold_update.py` → `src/tasks/archive/`
+- `notebooks/` — 14 notebooks do dataset v1 → `notebooks/archive/`
+- `scripts/` — 3 scripts obsoletos → `scripts/historico/`
+- `reports/` — 24 figuras, métricas e mapas do dataset v1 → `reports/archive/`
+
+### Documentação
+- 22 ADRs criados em `reports/adr/` — histórico completo de decisões
+- `reports/archive/` — diário de bordo e decisoes_modelagem arquivados
+- `README.md` e `ARCHITECTURE.md` — métricas atualizadas para v5
+
+### Status
+Pipeline v2.0 refatorado e validado (imports OK).
+Próximo: teste de execução completo end-to-end.
+
+---
+
 ## [2.0.0-dev] — 2026-04-18
 
 ### Contexto

@@ -188,14 +188,14 @@ dbt test         # valida qualidade — PASS=62
 
 ## Métricas do Modelo
 
-| Métrica | v4 (Gold v4, 2018-2024) | v5 (Gold v5 — pendente treino) |
-|---|---|---|
-| MAE | 17.6 casos/semana | — |
-| R² | 0.820 (TimeSeriesSplit) | — |
-| Features | 59 | 54 |
-| Período treino | 2018-2024 | 2018-2025 |
+| Métrica | v5 (Gold v5, 2018-2025) |
+|---|---|
+| MAE | 9.7 ± 6.2 casos/semana |
+| R² | 0.741 ± 0.081 (TimeSeriesSplit 5 folds) |
+| Features | 54 |
+| Período treino | 2018-2025 |
 
-> **Nota acadêmica:** R²=0.820 (TimeSeriesSplit 5 folds, Gold v4) é a métrica oficial para publicação.
+> **Nota acadêmica:** R²=0.741 ± 0.081 (TimeSeriesSplit 5 folds, Gold v5) é a métrica oficial para publicação. Ver [ADR-006](reports/adr/006-metrica-oficial-timeseriessplit.md) para justificativa da escolha metodológica.
 
 ---
 

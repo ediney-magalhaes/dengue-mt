@@ -30,12 +30,13 @@ models:
     staging:
       +materialized: view
       +schema: staging
-
+      gee:
+        archive:
+          +enabled: false   # GEE abandonado — substituído por MODIS (ADR-005/ADR-014)
     # Silver → joins e lags (intermediate)
     intermediate:
       +materialized: table
       +schema: intermediate
-
     # Gold — dataset final para ML (marts)
     marts:
       +materialized: table

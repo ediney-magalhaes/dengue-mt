@@ -51,6 +51,19 @@ ATRASOS_FONTES = {
 # SINAN tem 15 semanas mas é corrigido via nowcasting pelo InfoDengue
 ATRASO_OPERACIONAL_DIAS = 14
 
+# ============================================================
+# PATHS DOS ARTEFATOS — latest e versionados
+# ============================================================
+# Pipeline, dashboard e CI leem sempre via latest
+# Paths versionados são usados apenas no retreino para salvar
+MODEL_LATEST_PATH  = MODELS_DIR / 'lgbm_producao_latest.pkl'
+SCHEMA_LATEST_PATH = MODELS_DIR / 'lgbm_feature_schema_latest.json'
+GOLD_LATEST_PATH   = DATA_DIR  / 'gold' / 'dataset_features_latest.parquet'
+
+# Nomes para upload no HF Hub
+HF_MODEL_LATEST  = 'models/lgbm_producao_latest.pkl'
+HF_SCHEMA_LATEST = 'models/lgbm_feature_schema_latest.json'
+HF_GOLD_LATEST   = 'gold/dataset_features_latest.parquet'
 
 def calcular_data_corte(hoje: datetime = None, atraso_dias: int = None) -> datetime:
     """

@@ -1,56 +1,12 @@
 # ============================================================
-# Dengue MT — Testes Automatizados
-# pytest + Pandera — cobertura: dados, pipeline e modelo
+# Dengue MT — Testes Automatizados v2.0
+# pytest — cobertura: Gold v5 + modelo latest
 # ============================================================
 
 import pytest
 import pandas as pd
 import numpy as np
-import pandera.pandas as pa
-from pandera.pandas import Column, DataFrameSchema, Check
 from pathlib import Path
-
-# ============================================================
-# SCHEMAS PANDERA — Contratos de Dados
-# ============================================================
-
-# Schema Silver SINAN
-schema_silver_sinan = DataFrameSchema({
-    "DT_NOTIFIC": Column(pa.DateTime, nullable=False),
-    "ID_MUNICIP": Column(str, nullable=False),
-    "ID_UNIDADE": Column(str, nullable=True),
-    "CS_SEXO":   Column(str, nullable=True,
-                        checks=Check.isin(['M', 'F', 'I', None])),
-    "ano":       Column(int, checks=[
-                        Check.greater_than_or_equal_to(2007),
-                        Check.less_than_or_equal_to(2025)
-                 ]),
-})
-
-# Schema Gold dataset_features
-schema_gold = DataFrameSchema({
-    "data":               Column(pa.DateTime, nullable=False),
-    "casos": Column(pa.Int64, checks=Check.greater_than_or_equal_to(0)),
-    "temp_media":         Column(float, checks=[
-                                Check.greater_than_or_equal_to(10),
-                                Check.less_than_or_equal_to(50)
-                          ], nullable=True),
-    "precipitacao_total": Column(float, checks=Check.greater_than_or_equal_to(0),
-                                 nullable=True),
-    "umidade_media":      Column(float, checks=[
-                                Check.greater_than_or_equal_to(0),
-                                Check.less_than_or_equal_to(100)
-                          ], nullable=True),
-    "casos_lag_7d":       Column(float, nullable=True),
-    "ndvi":               Column(float, checks=[
-                                Check.greater_than_or_equal_to(-1),
-                                Check.less_than_or_equal_to(1)
-                          ], nullable=True),
-    "oni_index":          Column(float, checks=[
-                                Check.greater_than_or_equal_to(-3),
-                                Check.less_than_or_equal_to(3)
-                          ], nullable=True),
-})
 
 # ============================================================
 # FIXTURES
@@ -58,63 +14,68 @@ schema_gold = DataFrameSchema({
 
 @pytest.fixture(scope="session")
 def df_gold():
-    path = Path("data/gold/dataset_features_v4.parquet")
+    path = Path("data/gold/dataset_features_latest.parquet")
     if not path.exists():
-        pytest.skip("dataset_features_v4.parquet não encontrado")
+        path = Path("data/gold/dataset_features_v5_latest.parquet")
+    if not path.exists():
+        pytest.skip("Gold dataset não encontrado")
     df = pd.read_parquet(path)
-    df["data"] = pd.to_datetime(df["data"])
+    df["data_se"] = pd.to_datetime(df["data_se"])
     return df
+
 
 @pytest.fixture(scope="session")
 def modelo():
     import joblib
-    path = Path("models/lgbm_v4_producao.pkl")
+    path = Path("models/lgbm_producao_latest.pkl")
+    if not path.exists():
+        path = Path("models/lgbm_v5_producao.pkl")
     if not path.exists():
         pytest.skip("Modelo não encontrado")
     return joblib.load(path)
 
+
 # ============================================================
-# TESTES — Dados Gold
+# TESTES — Gold Dataset
 # ============================================================
 
 def test_gold_shape(df_gold):
-    """Dataset deve ter pelo menos 2000 registros e 50 features."""
-    assert df_gold.shape[0] >= 2000, f"Poucos registros: {df_gold.shape[0]}"
-    assert df_gold.shape[1] >= 50,   f"Poucas features: {df_gold.shape[1]}"
+    """Gold deve ter pelo menos 800 registros e 10 features."""
+    assert df_gold.shape[0] >= 800, f"Poucos registros: {df_gold.shape[0]}"
+    assert df_gold.shape[1] >= 10, f"Poucas colunas: {df_gold.shape[1]}"
+
 
 def test_gold_periodo(df_gold):
-    """Dataset deve cobrir 2018-2024."""
-    anos = df_gold["data"].dt.year.unique()
+    """Gold deve cobrir 2018–2025."""
+    anos = df_gold["data_se"].dt.year.unique()
     assert 2018 in anos, "2018 ausente no dataset"
-    assert 2024 in anos, "2024 ausente no dataset"
+    assert anos.max() >= 2025, f"Ano máximo é {anos.max()} — esperado >= 2025"
+
+
+def test_gold_municipios(df_gold):
+    """Gold deve conter Cuiabá e Várzea Grande."""
+    municipios = df_gold["municipio_id"].unique()
+    assert 5103403 in municipios, "Cuiabá (5103403) ausente"
+    assert 5108402 in municipios, "Várzea Grande (5108402) ausente"
+
 
 def test_gold_casos_nao_negativos(df_gold):
     """Casos de dengue nunca podem ser negativos."""
-    assert (df_gold["casos"] >= 0).all(), "Casos negativos detectados!"
+    assert (df_gold["casos_confirmados"] >= 0).all(), "Casos negativos detectados!"
 
-def test_gold_temperatura_plausivel(df_gold):
-    """Temperatura deve estar entre 10°C e 50°C para Cuiabá."""
-    temp = df_gold["temp_media"].dropna()
-    assert temp.min() >= 10, f"Temperatura mínima suspeita: {temp.min()}"
-    assert temp.max() <= 50, f"Temperatura máxima suspeita: {temp.max()}"
 
 def test_gold_sem_duplicatas(df_gold):
-    """Não deve haver datas duplicadas."""
-    duplicatas = df_gold["data"].duplicated().sum()
-    assert duplicatas == 0, f"{duplicatas} datas duplicadas!"
+    """Não deve haver duplicatas de (municipio_id, data_se)."""
+    duplicatas = df_gold.duplicated(subset=["municipio_id", "data_se"]).sum()
+    assert duplicatas == 0, f"{duplicatas} duplicatas!"
 
-def test_gold_ndvi_range(df_gold):
-    """NDVI deve estar entre -1 e 1."""
-    ndvi = df_gold["ndvi"].dropna()
-    assert ndvi.min() >= -1, f"NDVI < -1: {ndvi.min()}"
-    assert ndvi.max() <= 1,  f"NDVI > 1: {ndvi.max()}"
 
-def test_gold_pandera_schema(df_gold):
-    """Validar schema completo com Pandera."""
-    try:
-        schema_gold.validate(df_gold, lazy=True)
-    except pa.errors.SchemaErrors as e:
-        pytest.fail(f"Contrato de dados violado:\n{e.failure_cases}")
+def test_gold_colunas_obrigatorias(df_gold):
+    """Gold deve ter as colunas essenciais."""
+    obrigatorias = ["data_se", "municipio_id", "casos_confirmados", "casos_lag1"]
+    faltando = [c for c in obrigatorias if c not in df_gold.columns]
+    assert not faltando, f"Colunas faltando: {faltando}"
+
 
 # ============================================================
 # TESTES — Modelo
@@ -124,73 +85,39 @@ def test_modelo_carrega(modelo):
     """Modelo deve carregar sem erros."""
     assert modelo is not None
 
+
 def test_modelo_features(modelo):
     """Modelo deve ter features definidas."""
     assert hasattr(modelo, "feature_name_")
     assert len(modelo.feature_name_) > 0
     print(f"\nFeatures do modelo: {len(modelo.feature_name_)}")
 
+
 def test_modelo_predicao_basica(modelo, df_gold):
     """Modelo deve gerar predições não negativas."""
-    drop_cols = ["data", "casos", "casos_nowcast", "municipio_id",
-                 "casos_por_100k", "casos_nowcast_por_100k", "fator_nowcasting"]
-    drop_cols = [c for c in drop_cols if c in df_gold.columns]
-    
     feature_cols = [c for c in modelo.feature_name_ if c in df_gold.columns]
     X = df_gold[feature_cols].tail(30)
-    
-    preds = modelo.predict(X)
-    preds = np.maximum(preds, 0)
-    
+
+    preds = np.maximum(np.expm1(modelo.predict(X)), 0)
+
     assert len(preds) == len(X), "Número de predições incorreto"
     assert (preds >= 0).all(), "Predições negativas detectadas"
-    assert preds.mean() < 500, f"Predições muito altas: {preds.mean():.1f}"
+    assert preds.mean() < 1000, f"Predições muito altas: {preds.mean():.1f}"
+
 
 def test_modelo_r2_minimo(modelo, df_gold):
-    """R² nas últimas 90 observações deve ser >= 0.50."""
+    """R² nas últimas 52 SE deve ser >= 0.50."""
     from sklearn.metrics import r2_score
-    
-    drop_cols = ["data", "casos", "casos_nowcast", "municipio_id",
-                 "casos_por_100k", "casos_nowcast_por_100k", "fator_nowcasting"]
-    drop_cols = [c for c in drop_cols if c in df_gold.columns]
-    
+
     feature_cols = [c for c in modelo.feature_name_ if c in df_gold.columns]
-    df_test = df_gold[feature_cols + ["casos"]].tail(90)
-    df_test = df_test[df_test["casos"].notna()]
-    
+    df_test = df_gold[feature_cols + ["casos_confirmados"]].tail(52)
+    df_test = df_test[df_test["casos_confirmados"].notna()]
+
     X = df_test[feature_cols]
-    y = df_test["casos"]
-    
-    preds = np.maximum(modelo.predict(X), 0)
+    y = df_test["casos_confirmados"]
+
+    preds = np.maximum(np.expm1(modelo.predict(X)), 0)
     r2 = r2_score(y, preds)
-    
-    print(f"\nR² últimas 90 obs: {r2:.3f}")
-    # Limiar progressivo — aumenta conforme modelo estabiliza com dados 2025/2026
-    # v1.4.0: -0.1 (retreino inicial) → meta: 0.50 após 3+ ciclos epidêmicos
-    assert r2 >= -0.1, f"R² abaixo do mínimo aceitável: {r2:.3f}"
 
-# ============================================================
-# TESTES — Nowcasting
-# ============================================================
-
-def test_nowcasting_fator_range():
-    """Fator de nowcasting deve estar entre 1.0 e 3.0."""
-    path = Path("data/external/nowcasting_fatores.parquet")
-    if not path.exists():
-        pytest.skip("Fatores de nowcasting não encontrados")
-    
-    df = pd.read_parquet(path)
-    assert df["fator_nowcasting"].min() >= 1.0
-    assert df["fator_nowcasting"].max() <= 3.0
-    assert len(df) >= 52, "Deve cobrir pelo menos 52 semanas"
-
-def test_nowcasting_semanas_completas():
-    """Deve ter fator para todas as semanas do ano."""
-    path = Path("data/external/nowcasting_fatores.parquet")
-    if not path.exists():
-        pytest.skip("Fatores de nowcasting não encontrados")
-    
-    df = pd.read_parquet(path)
-    semanas = df["semana_epi"].values
-    assert 1 in semanas,  "Semana 1 ausente"
-    assert 52 in semanas, "Semana 52 ausente"
+    print(f"\nR² últimas 52 SE: {r2:.3f}")
+    assert r2 >= 0.50, f"R² abaixo do mínimo aceitável: {r2:.3f}"

@@ -86,7 +86,7 @@ def monitorar_drift_modelo():
     # Avaliar performance do modelo nas últimas 26 SE
     X_rec  = df_cur[feature_cols]
     y_rec  = df_cur['casos_confirmados']
-    y_pred = np.maximum(modelo.predict(X_rec), 0)
+    y_pred = np.maximum(np.expm1(modelo.predict(X_rec)), 0)
 
     from sklearn.metrics import mean_absolute_error, r2_score
     mae_recente = mean_absolute_error(y_rec, y_pred)

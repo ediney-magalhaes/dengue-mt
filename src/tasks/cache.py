@@ -25,7 +25,7 @@ CACHE_VALIDADE = {
     'nasa_power':     7,   # atualização diária mas latência 7d
     'google_trends':  7,   # semana epidemiológica fechada
     'oni_index':      30,  # atualização trimestral NOAA
-    'gee_ndvi':       30,  # latência Sentinel-2 ~14 dias
+    'modis':          30,  # latência MOD13A3 ~14 dias
     'cnes':           90,  # cadastro muda pouco
 }
 

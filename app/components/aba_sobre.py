@@ -1,5 +1,5 @@
 # ============================================================
-# Dengue MT — Componente: Aba Sobre
+# Dengue MT — Componente: Aba Sobre v2.0
 # ============================================================
 
 import streamlit as st
@@ -16,24 +16,34 @@ def render_aba_sobre():
         com **2 a 4 semanas de antecedência**.
 
         ### 📊 Fontes de dados
-        - **SINAN/DATASUS** — 390k registros (2007–2024)
-        - **INMET A901** — clima diário Cuiabá
-        - **NASA POWER** — radiação solar
-        - **GEE Sentinel-2/MODIS** — NDVI, NDWI, NDBI
-        - **NOAA** — ONI Index (ENSO)
-        - **Google Trends** — Infoveillance (r=0.922)
+        - **InfoDengue API** — casos + nowcast + Rt + clima ERA5 (Fiocruz)
+        - **NASA POWER** — temperatura, precipitação, radiação, umidade
+        - **MODIS MOD13A3** — NDVI e EVI via AppEEARS NASA
+        - **NOAA ONI** — El Niño/La Niña (índice climático global)
+        - **Google Trends** — infoveillância digital (BR-MT)
+
+        ### 🏗️ Arquitetura
+        - Pipeline: dbt-core + DuckDB (medallion)
+        - Orquestração: Prefect 3.x
+        - CI/CD: GitHub Actions (domingo 06h)
+        - Armazenamento: Hugging Face Hub
         """)
     with col_b:
         st.markdown("""
-        ### 🤖 Evolução dos modelos
+        ### 🤖 Modelo em produção
 
-        | Modelo | R² | sMAPE | Validação |
-        |---|---|---|---|
-        | LightGBM v2 | 0.830 | N/A | Rolling Window |
-        | LightGBM v3 | 0.829 | 32.4% | Rolling Window |
-        | **LightGBM v4** | **0.820** | **31.5%** | **TimeSeriesSplit** |
+        | Métrica | Valor |
+        |---|---|
+        | **Modelo** | LightGBM v5 |
+        | **R²** | 0.741 ± 0.081 |
+        | **MAE** | 9.7 ± 6.2 casos/semana |
+        | **Validação** | TimeSeriesSplit 5 folds |
+        | **Features** | 54 → 12 (SHAP) |
+        | **Período** | 2018–2025 |
 
-        > Métrica oficial: TimeSeriesSplit 5-fold — academicamente defensável.
+        > Métrica oficial: TimeSeriesSplit 5-fold —
+        > academicamente defensável para publicação.
+        > Ver [ADR-006](https://github.com/ediney-magalhaes/dengue-mt/blob/main/reports/adr/006-metrica-oficial-timeseriessplit.md).
 
         ### 🏛️ Instituição
         Instituto Federal de Mato Grosso (IFMT)
@@ -46,5 +56,7 @@ def render_aba_sobre():
     ### ⚖️ Ética e Conformidade
     - Dados agregados — sem identificação individual (LGPD)
     - Modelo interpretável via SHAP values
+    - Custo total de infraestrutura: R$ 0,00
     - Código aberto: [github.com/ediney-magalhaes/dengue-mt](https://github.com/ediney-magalhaes/dengue-mt)
+    - Dataset público: [HF Hub](https://huggingface.co/datasets/edyestatistica/dengue-mt-medallion)
     """)

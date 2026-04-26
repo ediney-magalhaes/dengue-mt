@@ -1,5 +1,5 @@
 # ============================================================
-# Dengue MT — Componente: Acesso a Dados
+# Dengue MT — Componente: Acesso a Dados v2.0
 # ============================================================
 
 import streamlit as st
@@ -10,6 +10,10 @@ from datetime import datetime, timedelta
 API_URL    = "http://127.0.0.1:8000"
 HF_DATASET = "edyestatistica/dengue-mt-medallion"
 
+# Nomes dos artefatos latest no HF Hub
+HF_GOLD_LATEST  = 'gold/dataset_features_latest.parquet'
+HF_MODEL_LATEST = 'models/lgbm_producao_latest.pkl'
+
 
 @st.cache_data(ttl=300)
 def get_saude():
@@ -19,9 +23,9 @@ def get_saude():
     except:
         pass
     return {
-        'modelo': 'LightGBM v4',
+        'modelo': 'LightGBM v5',
         'status': 'ok',
-        'metricas': {'R2': 0.820, 'MAE': 17.6, 'RMSE': 28.4, 'sMAPE': 31.5}
+        'metricas': {'R2': 0.741, 'MAE': 9.7}
     }
 
 
@@ -33,7 +37,7 @@ def carregar_do_hf(arquivo):
             repo_id=HF_DATASET, filename=arquivo, repo_type="dataset"
         )
         return pd.read_parquet(path)
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -43,43 +47,21 @@ def get_historico():
         r = requests.get(f"{API_URL}/historico", timeout=5)
         if r.status_code == 200:
             df = pd.DataFrame(r.json()['serie'])
-            df['data'] = pd.to_datetime(df['data'])
+            df['data_se'] = pd.to_datetime(df['data_se'])
             return df
     except:
         pass
-    df = carregar_do_hf('gold/dataset_features_v4.parquet')
-    if df is not None:
-        df['data'] = pd.to_datetime(df['data'])
-        return df[['data', 'casos']].sort_values('data')
-    try:
-        df = pd.read_parquet('data/gold/dataset_features_v4.parquet')
-        df['data'] = pd.to_datetime(df['data'])
-        return df[['data', 'casos']].sort_values('data')
-    except:
-        return None
 
-
-@st.cache_data(ttl=300)
-def get_score_risco_hf():
-    try:
-        r = requests.get(f"{API_URL}/score-risco", timeout=5)
-        if r.status_code == 200:
-            return r.json()
-    except:
-        pass
-    df = carregar_do_hf('external/score_risco_v2.parquet')
+    df = carregar_do_hf(HF_GOLD_LATEST)
     if df is not None:
-        return {
-            'total_unidades': len(df),
-            'gerado_em': datetime.now().isoformat(),
-            'distribuicao': df['risco_v2'].value_counts().to_dict(),
-            'unidades': df.to_dict(orient='records')
-        }
+        df['data_se'] = pd.to_datetime(df['data_se'])
+        return df[['data_se', 'casos_confirmados', 'municipio_id']].sort_values('data_se')
+
     return None
 
 
 @st.cache_data(ttl=300)
-def get_previsao(dias=14):
+def get_previsao(dias=28):
     try:
         r = requests.get(f"{API_URL}/previsao", params={"dias": dias}, timeout=10)
         return r.json() if r.status_code == 200 else None
@@ -94,7 +76,7 @@ def carregar_modelo_hf():
         import joblib
         path = hf_hub_download(
             repo_id=HF_DATASET,
-            filename="models/lgbm_v4_producao.pkl",
+            filename=HF_MODEL_LATEST,
             repo_type="dataset"
         )
         return joblib.load(path)
@@ -102,35 +84,43 @@ def carregar_modelo_hf():
         return None
 
 
-def fazer_previsao_local(modelo, df_gold, dias=14):
+def fazer_previsao_local(modelo, df_gold, semanas=4):
+    """Previsão local por município — SE+1 a SE+4."""
     try:
         df = df_gold.copy()
-        df['data'] = pd.to_datetime(df['data'])
-        df = df.sort_values('data').dropna()
-        feature_cols  = [c for c in modelo.feature_name_ if c in df.columns]
-        ultima_linha  = df[feature_cols].iloc[[-1]]
-        ultima_data   = df['data'].max()
+        df['data_se'] = pd.to_datetime(df['data_se'])
+        df = df.sort_values('data_se')
+        feature_cols = [c for c in modelo.feature_name_ if c in df.columns]
+
         previsoes = []
-        for i in range(1, dias + 1):
-            data_prev  = ultima_data + timedelta(days=i)
-            casos_pred = max(float(modelo.predict(ultima_linha)[0]), 0)
-            previsoes.append({
-                'data': data_prev.strftime('%Y-%m-%d'),
-                'casos_previstos': round(casos_pred, 1),
-                'nivel_risco': (
-                    'Muito Alto'  if casos_pred > 200 else
-                    'Alto'        if casos_pred > 100 else
-                    'Moderado'    if casos_pred > 50  else
-                    'Baixo'       if casos_pred > 20  else
-                    'Muito Baixo'
-                )
-            })
+        for mun_id in df['municipio_id'].unique():
+            df_mun = df[df['municipio_id'] == mun_id]
+            ultima_linha = df_mun[feature_cols].iloc[[-1]]
+            ultima_data  = df_mun['data_se'].max()
+
+            for i in range(1, semanas + 1):
+                data_prev  = ultima_data + timedelta(weeks=i)
+                casos_pred = max(float(modelo.predict(ultima_linha)[0]), 0)
+                previsoes.append({
+                    'data_se':          data_prev.strftime('%Y-%m-%d'),
+                    'municipio_id':     int(mun_id),
+                    'casos_previstos':  round(casos_pred, 1),
+                    'horizonte_se':     i,
+                    'nivel_risco': (
+                        'Muito Alto'  if casos_pred > 200 else
+                        'Alto'        if casos_pred > 100 else
+                        'Moderado'    if casos_pred > 50  else
+                        'Baixo'       if casos_pred > 20  else
+                        'Muito Baixo'
+                    )
+                })
+
         return {
-            'modelo': 'LightGBM v4',
-            'gerado_em': datetime.now().isoformat(),
-            'ultima_data_conhecida': ultima_data.strftime('%Y-%m-%d'),
-            'horizonte_dias': dias,
-            'previsoes': previsoes
+            'modelo':                'LightGBM v5',
+            'gerado_em':             datetime.now().isoformat(),
+            'ultima_data_conhecida': str(df['data_se'].max().date()),
+            'horizonte_semanas':     semanas,
+            'previsoes':             previsoes
         }
     except:
         return None
@@ -151,16 +141,15 @@ def get_run_metadata():
         try:
             with open(caminho) as f:
                 meta = json.load(f)
-            # nivel_drift pode estar em resultados ou na raiz
             resultados = meta.get('resultados', {})
             return {
                 'nivel_drift':  resultados.get('nivel_drift', meta.get('nivel_drift')),
                 'drift_score':  resultados.get('drift_score', meta.get('drift_score')),
-                'drift_mae':    resultados.get('drift_mae',   meta.get('drift_mae')),
-                'drift_r2':     resultados.get('drift_r2',    meta.get('drift_r2')),
-                'retreino':     resultados.get('retreino',    meta.get('retreino')),
+                'drift_mae':    resultados.get('drift_mae', meta.get('drift_mae')),
+                'drift_r2':     resultados.get('drift_r2', meta.get('drift_r2')),
+                'retreino':     resultados.get('retreino', meta.get('retreino')),
                 'timestamp':    meta.get('timestamp', ''),
-                'fallbacks':    resultados.get('fallbacks',   meta.get('fallbacks', {})),
+                'fallbacks':    resultados.get('fallbacks', meta.get('fallbacks', {})),
             }
         except:
             continue

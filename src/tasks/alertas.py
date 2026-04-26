@@ -13,7 +13,7 @@ from datetime import datetime
 
 logger = logging.getLogger('dengue-mt.pipeline')
 
-TELEGRAM_TOKEN   = os.environ.get('TELEGRAM_TOKEN')
+TELEGRAM_TOKEN   = os.environ.get('TELEGRAM_BOT_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
 
@@ -52,7 +52,7 @@ def alerta_pipeline_ok(resumo: dict):
     texto = (
         f"{emoji} <b>DENGUE MT — Pipeline OK</b>\n"
         f"📅 Data: {data}\n"
-        f"📉 MAE: {resumo.get('drift_mae', 'N/A')} casos/dia\n"
+        f"📉 MAE: {resumo.get('drift_mae', 'N/A')} casos/semana\n"
         f"📈 R²: {resumo.get('drift_r2', 'N/A')}\n"
         f"🎯 Drift: {drift_str} ({nivel})\n"
         f"🔁 Retreino: {resumo.get('retreino', 'N/A')}\n"
@@ -94,7 +94,7 @@ def alerta_drift(resumo: dict):
         f"{emoji} <b>DENGUE MT — DRIFT {nivel.upper()}</b>\n"
         f"📅 Data: {data}\n"
         f"🎯 Drift: {float(resumo.get('drift_score') or 0):.3f} ({nivel})\n"
-        f"📉 MAE: {resumo.get('drift_mae', 'N/A')} casos/dia\n"
+        f"📉 MAE: {resumo.get('drift_mae', 'N/A')} casos/semana\n"
         f"📈 R²: {resumo.get('drift_r2', 'N/A')}\n"
         f"⚙️ Ação: {acao}"
     )
@@ -112,7 +112,7 @@ def alerta_retreino(resultado: dict, resumo: dict):
         detalhe = (
             f"📈 R² novo: {resultado.get('r2_novo', 'N/A')}\n"
             f"📈 R² anterior: {resultado.get('r2_anterior', 'N/A')}\n"
-            f"📉 MAE novo: {resultado.get('mae', 'N/A')} casos/dia"
+            f"📉 MAE novo: {resultado.get('mae', 'N/A')} casos/semana"
         )
     elif status == 'mantido':
         emoji = '⚠️'

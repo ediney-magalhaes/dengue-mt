@@ -28,6 +28,61 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.0.0-dev] — 2026-04-26 (continuação)
+
+### Contexto
+Conclusão da refatoração v2.0 — 17 passos completos, teste end-to-end
+validado, bug crítico de escala (expm1) detectado e corrigido.
+
+### Modelo
+- Arquivo: `models/lgbm_producao_latest.pkl` (v5, baixado do HF Hub)
+- Dataset: `gold/dataset_features_v5_2026-04-26.parquet`
+- Commit SHA: `c8aa647`
+- Métricas oficiais (TimeSeriesSplit 5-fold): R²=0.741 ± 0.081 | MAE=9.7 ± 6.2
+- Métricas operacionais (drift 26 SE): R²=0.866 | MAE=1.82
+- Drift score: 0.116 | Nível: normal
+- Retreino: não necessário
+
+### Corrigido
+- **Bug crítico: expm1 faltando na inferência** — modelo treinado com `log1p(target)`
+  mas 3 módulos não aplicavam `expm1` na predição, causando R² negativo em todas
+  as avaliações. Corrigido em `drift.py` e `test_pipeline.py` (ADR-024)
+- `ci.yml` — path do DuckDB corrigido para absoluto via `${{ github.workspace }}`
+- `test_pipeline.py` — `test_gold_periodo` agora usa `anos.max() >= 2025` (dinâmico)
+
+### Refatorado (passos 1-17 completos)
+- Passos 1-7 (commit 47): config, build_features, drift, validacao→dbt,
+  publicacao, retreino, relatorio — todos atualizados para v2.0 latest
+- Passos 8-13 (commit 48): mlflow_tracking, cache, alertas, dados,
+  aba_previsao, aba_sobre — referências v4 removidas
+- Passos 14-15 (commit 49): test_pipeline.py (10/10 PASS) + ci.yml v2.0
+- Passos 16-17 (commits 45-46): gee e feature_engineering arquivados
+
+### Validado — teste end-to-end 26/04/2026
+```
+Ingestão: 5/5 fontes OK (InfoDengue, NASA POWER, ONI, Trends, MODIS)
+dbt run:  PASS=8 (6 views + 2 tables) em 1.17s
+dbt test: PASS=59 em 2.11s
+pytest:   10/10 PASS
+Drift:    MAE=1.82 | R²=0.866 | normal
+HF Hub:   Gold snapshot + latest publicados
+Telegram: alerta recebido
+MLflow:   run d225279f registrado
+Relatório: publicado no HF Hub
+```
+### Documentação
+- ADR-023: Integração dbt no pipeline Prefect
+- ADR-024: Transformação log1p/expm1 — par obrigatório
+
+### Pendências
+- Merge dev → main
+- Dashboard v5 — atualizar com modelo e métricas corretas
+- CI/CD — disparar workflow manual para validar no GitHub Actions
+- Google Trends histórico — reconstrução via overlapping windows
+- Mapa IDW dinâmico (ADR-022)
+
+---
+
 ## [2.0.0-dev] — 2026-04-21
 
 ### Contexto
@@ -65,9 +120,9 @@ com archive de notebooks, scripts e figuras do dataset v1.
 
 ### Status
 Pipeline v2.0 refatorado e validado (imports OK).
-Próximo: teste de execução completo end-to-end.
 
 ---
+
 
 ## [2.0.0-dev] — 2026-04-18
 

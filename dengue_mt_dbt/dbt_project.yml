@@ -17,9 +17,9 @@ clean-targets:
 
 # Caminhos dos dados Bronze (fontes externas)
 vars:
-  bronze_path: "C:/Users/edy85/OneDrive/Engenheiro-Cientista-Analista de dados/Projeto_Dengue_MT/data/bronze"
-  silver_path: "C:/Users/edy85/OneDrive/Engenheiro-Cientista-Analista de dados/Projeto_Dengue_MT/data/silver"
-  gold_path: "C:/Users/edy85/OneDrive/Engenheiro-Cientista-Analista de dados/Projeto_Dengue_MT/data/gold"
+  bronze_path: "../data/bronze"
+  silver_path: "../data/silver"
+  gold_path: "../data/gold"
   data_inicio: "2018-01-01"
   data_fim: "2025-12-31"
   municipios: [5103403, 5108402]  # Cuiabá e Várzea Grande

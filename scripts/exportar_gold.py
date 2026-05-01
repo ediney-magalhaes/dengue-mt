@@ -6,6 +6,10 @@ import duckdb
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 GOLD_DIR = Path('data/gold')
 GOLD_DIR.mkdir(parents=True, exist_ok=True)
@@ -23,9 +27,11 @@ def exportar_gold() -> Path:
     # Salva com data do snapshot
     hoje = datetime.now().strftime('%Y-%m-%d')
     path_datado = GOLD_DIR / f'dataset_features_v5_{hoje}.parquet'
-    path_latest = GOLD_DIR / 'dataset_features_v5_latest.parquet'
+    path_latest_v5 = GOLD_DIR / 'dataset_features_v5_latest.parquet'
+    path_latest    = GOLD_DIR / 'dataset_features_latest.parquet'
 
     df.to_parquet(path_datado, index=False)
+    df.to_parquet(path_latest_v5, index=False)
     df.to_parquet(path_latest, index=False)
 
     print(f'\n✅ Gold salvo:')
@@ -39,24 +45,35 @@ def publicar_hf_hub(path: Path):
     """Publica Gold no HF Hub."""
     try:
         from huggingface_hub import HfApi
-        api = HfApi()
-
-        hoje = datetime.now().strftime('%Y-%m-%d')
+        token = os.environ.get('HF_TOKEN')
+        api   = HfApi()
+        hoje  = datetime.now().strftime('%Y-%m-%d')
 
         # Upload snapshot datado
         api.upload_file(
             path_or_fileobj=str(path.parent / f'dataset_features_v5_{hoje}.parquet'),
             path_in_repo=f'gold/dataset_features_v5_{hoje}.parquet',
             repo_id='edyestatistica/dengue-mt-medallion',
-            repo_type='dataset'
+            repo_type='dataset',
+            token=token,
         )
 
-        # Upload latest
+        # Upload latest v5
         api.upload_file(
-            path_or_fileobj=str(path),
+            path_or_fileobj=str(path.parent / 'dataset_features_v5_latest.parquet'),
             path_in_repo='gold/dataset_features_v5_latest.parquet',
             repo_id='edyestatistica/dengue-mt-medallion',
-            repo_type='dataset'
+            repo_type='dataset',
+            token=token,
+        )
+
+        # Upload latest genérico (lido pelo pipeline e dashboard)
+        api.upload_file(
+            path_or_fileobj=str(path),
+            path_in_repo='gold/dataset_features_latest.parquet',
+            repo_id='edyestatistica/dengue-mt-medallion',
+            repo_type='dataset',
+            token=token,
         )
 
         print(f'✅ Publicado no HF Hub: edyestatistica/dengue-mt-medallion')

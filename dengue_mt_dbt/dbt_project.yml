@@ -21,7 +21,7 @@ vars:
   silver_path: "../data/silver"
   gold_path: "../data/gold"
   data_inicio: "2018-01-01"
-  data_fim: "2025-12-31"
+  data_fim: "2099-12-31"
   municipios: [5103403, 5108402]  # Cuiabá e Várzea Grande
 
 models:

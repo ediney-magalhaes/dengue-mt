@@ -4,6 +4,7 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import requests
 from datetime import datetime, timedelta
 
@@ -100,7 +101,7 @@ def fazer_previsao_local(modelo, df_gold, semanas=4):
 
             for i in range(1, semanas + 1):
                 data_prev  = ultima_data + timedelta(weeks=i)
-                casos_pred = max(float(modelo.predict(ultima_linha)[0]), 0)
+                casos_pred = max(float(np.expm1(modelo.predict(ultima_linha)[0])), 0)
                 previsoes.append({
                     'data_se':          data_prev.strftime('%Y-%m-%d'),
                     'municipio_id':     int(mun_id),

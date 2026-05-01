@@ -70,7 +70,12 @@ def executar_dbt_run():
     logger = get_run_logger()
     logger.info("Iniciando dbt run — Bronze → Silver → Intermediate → Gold...")
 
-    resultado = _executar_dbt(['dbt', 'run'], logger)
+    from datetime import datetime
+    data_fim_atual = datetime.now().strftime('%Y-%m-%d')
+    resultado = _executar_dbt([
+        'dbt', 'run',
+        '--vars', f'{{"data_fim": "{data_fim_atual}"}}'
+    ], logger)
 
     if not resultado['sucesso']:
         logger.error(f"dbt run falhou — returncode: {resultado['returncode']}")

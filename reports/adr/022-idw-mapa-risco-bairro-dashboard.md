@@ -1,7 +1,9 @@
 # ADR-022 — IDW Dinâmico para Mapa de Risco por Bairro — Acoplado ao Modelo
  
-**Status:** Proposto — implementação pendente  
-**Data:** 20/04/2026  
+**Status:** Aceito — implementado em 30/04/2026 (ver ADR-027)
+
+**Data:** 20/04/2026
+
 **Tema:** Dashboard / Visualização Espacial / Produto
  
 ---

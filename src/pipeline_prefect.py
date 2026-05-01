@@ -38,7 +38,7 @@ from src.tasks.ingestao import (
 from src.tasks.dbt_runner  import executar_dbt_run, executar_dbt_test
 from src.tasks.drift       import monitorar_drift_modelo
 from src.tasks.retreino    import retreinar_modelo
-from src.tasks.publicacao  import publicar_gold_versionado
+from src.tasks.publicacao  import publicar_bronze_incremental, publicar_gold_versionado
 from src.tasks.relatorio   import gerar_relatorio_execucao
 from src.tasks.alertas     import (
     alerta_pipeline_ok, alerta_pipeline_falhou,
@@ -140,8 +140,12 @@ def pipeline_semanal():
         )
 
     # ============================================================
-    # ETAPA 3 — EXPORTAR GOLD → HF HUB
+    # ETAPA 3 — EXPORTAR GOLD E BRONZE → HF HUB
     # ============================================================
+
+    t0 = time.time()
+    publicacao_bronze = publicar_bronze_incremental()
+    log_etapa('publicar_bronze', t0, publicacao_bronze)
 
     t0 = time.time()
     publicacao_gold = publicar_gold_versionado()
@@ -226,7 +230,9 @@ def pipeline_semanal():
         'nivel_drift':     drift.get('nivel_drift'),
         'retreinar':       drift.get('retreinar', False),
         'retreino':        resultado_retreino['status'],
-        'gold_snapshot':   publicacao_gold.get('snapshot'),
+        'bronze_publicados': publicacao_bronze.get('publicados', 0),
+        'bronze_skipped':    publicacao_bronze.get('skipped', 0),
+        'gold_snapshot':     publicacao_gold.get('snapshot'),
     })
 
     _salvar_metadata(resumo)

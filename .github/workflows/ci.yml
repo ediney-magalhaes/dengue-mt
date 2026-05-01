@@ -45,37 +45,11 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Baixar Gold e modelo do HF Hub
+      - name: Restaurar artefatos do HF Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          pip install huggingface_hub
-          python -c "
-          import shutil, os
-          from pathlib import Path
-          from huggingface_hub import hf_hub_download
-
-          token = os.environ.get('HF_TOKEN')
-          Path('data/gold').mkdir(parents=True, exist_ok=True)
-          Path('models').mkdir(parents=True, exist_ok=True)
-
-          arquivos = [
-              ('gold/dataset_features_latest.parquet', 'data/gold/dataset_features_latest.parquet'),
-              ('models/lgbm_producao_latest.pkl',      'models/lgbm_producao_latest.pkl'),
-          ]
-          for repo_path, local_path in arquivos:
-              try:
-                  path = hf_hub_download(
-                      repo_id='edyestatistica/dengue-mt-medallion',
-                      filename=repo_path,
-                      repo_type='dataset',
-                      token=token,
-                  )
-                  shutil.copy(path, local_path)
-                  print(f'OK: {repo_path}')
-              except Exception as e:
-                  print(f'WARN: {repo_path} — {e}')
-          "
+          python scripts/restore_artifacts_hf.py --gold --modelo
 
       - name: Rodar testes pytest
         run: |
@@ -136,36 +110,12 @@ jobs:
                 threads: 4
           EOF
 
-      - name: Baixar modelo atual do HF Hub
+      - name: Restaurar artefatos do HF Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python -c "
-          import shutil, os
-          from pathlib import Path
-          from huggingface_hub import hf_hub_download
-
-          token = os.environ.get('HF_TOKEN')
-          Path('models').mkdir(parents=True, exist_ok=True)
-
-          arquivos = [
-              ('models/lgbm_producao_latest.pkl',         'models/lgbm_producao_latest.pkl'),
-              ('models/lgbm_feature_schema_latest.json',  'models/lgbm_feature_schema_latest.json'),
-          ]
-          for repo_path, local_path in arquivos:
-              try:
-                  path = hf_hub_download(
-                      repo_id='edyestatistica/dengue-mt-medallion',
-                      filename=repo_path,
-                      repo_type='dataset',
-                      token=token,
-                  )
-                  shutil.copy(path, local_path)
-                  print(f'OK: {repo_path}')
-              except Exception as e:
-                  print(f'WARN: {repo_path} — {e}')
-          "
-
+          python scripts/restore_artifacts_hf.py --gold --modelo --schema --bronze
+          
       - name: Executar pipeline semanal
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}

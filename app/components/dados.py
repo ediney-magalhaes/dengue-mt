@@ -1,5 +1,8 @@
 # ============================================================
-# Dengue MT — Componente: Acesso a Dados v2.0
+# Dengue MT — Componente: Acesso a Dados v3.0
+# ============================================================
+# Fonte única de dados para todas as abas do dashboard.
+# Limiares de risco lidos do GeoJSON — zero hardcode.
 # ============================================================
 
 import streamlit as st
@@ -11,7 +14,6 @@ from datetime import datetime, timedelta
 API_URL    = "http://127.0.0.1:8000"
 HF_DATASET = "edyestatistica/dengue-mt-medallion"
 
-# Nomes dos artefatos latest no HF Hub
 HF_GOLD_LATEST  = 'gold/dataset_features_latest.parquet'
 HF_MODEL_LATEST = 'models/lgbm_producao_latest.pkl'
 
@@ -21,7 +23,7 @@ def get_saude():
     try:
         r = requests.get(f"{API_URL}/saude", timeout=3)
         return r.json() if r.status_code == 200 else None
-    except:
+    except Exception:
         pass
     return {
         'modelo': 'LightGBM v5',
@@ -50,7 +52,7 @@ def get_historico():
             df = pd.DataFrame(r.json()['serie'])
             df['data_se'] = pd.to_datetime(df['data_se'])
             return df
-    except:
+    except Exception:
         pass
 
     df = carregar_do_hf(HF_GOLD_LATEST)
@@ -66,7 +68,7 @@ def get_previsao(dias=28):
     try:
         r = requests.get(f"{API_URL}/previsao", params={"dias": dias}, timeout=10)
         return r.json() if r.status_code == 200 else None
-    except:
+    except Exception:
         return None
 
 
@@ -81,17 +83,47 @@ def carregar_modelo_hf():
             repo_type="dataset"
         )
         return joblib.load(path)
-    except:
+    except Exception:
         return None
 
 
 def fazer_previsao_local(modelo, df_gold, semanas=4):
-    """Previsão local por município — SE+1 a SE+4."""
+    """
+    Previsão local por município — SE+1 a SE+4.
+    Classificação de risco usa percentis da série histórica
+    do Gold — sem limiares hardcoded.
+    """
     try:
         df = df_gold.copy()
         df['data_se'] = pd.to_datetime(df['data_se'])
         df = df.sort_values('data_se')
         feature_cols = [c for c in modelo.feature_name_ if c in df.columns]
+
+        # Calcula limiares municipais a partir do histórico
+        col_casos = [c for c in df.columns if 'caso' in c.lower()][0]
+        limiares_mun = {}
+        for mun_id in df['municipio_id'].unique():
+            casos_hist = df.loc[df['municipio_id'] == mun_id, col_casos].dropna().values
+            limiares_mun[int(mun_id)] = {
+                'P60': float(np.percentile(casos_hist, 60)),
+                'P75': float(np.percentile(casos_hist, 75)),
+                'P85': float(np.percentile(casos_hist, 85)),
+                'P95': float(np.percentile(casos_hist, 95)),
+            }
+
+        def _classificar(casos, mun_id):
+            lim = limiares_mun.get(int(mun_id), {})
+            if not lim:
+                return 'Muito Baixo'
+            if casos > lim['P95']:
+                return 'Muito Alto'
+            if casos > lim['P85']:
+                return 'Alto'
+            if casos > lim['P75']:
+                return 'Moderado'
+            if casos > lim['P60']:
+                return 'Baixo'
+            return 'Muito Baixo'
 
         previsoes = []
         for mun_id in df['municipio_id'].unique():
@@ -103,17 +135,11 @@ def fazer_previsao_local(modelo, df_gold, semanas=4):
                 data_prev  = ultima_data + timedelta(weeks=i)
                 casos_pred = max(float(np.expm1(modelo.predict(ultima_linha)[0])), 0)
                 previsoes.append({
-                    'data_se':          data_prev.strftime('%Y-%m-%d'),
-                    'municipio_id':     int(mun_id),
-                    'casos_previstos':  round(casos_pred, 1),
-                    'horizonte_se':     i,
-                    'nivel_risco': (
-                        'Muito Alto'  if casos_pred > 200 else
-                        'Alto'        if casos_pred > 100 else
-                        'Moderado'    if casos_pred > 50  else
-                        'Baixo'       if casos_pred > 20  else
-                        'Muito Baixo'
-                    )
+                    'data_se':         data_prev.strftime('%Y-%m-%d'),
+                    'municipio_id':    int(mun_id),
+                    'casos_previstos': round(casos_pred, 1),
+                    'horizonte_se':    i,
+                    'nivel_risco':     _classificar(casos_pred, mun_id),
                 })
 
         return {
@@ -123,7 +149,7 @@ def fazer_previsao_local(modelo, df_gold, semanas=4):
             'horizonte_semanas':     semanas,
             'previsoes':             previsoes
         }
-    except:
+    except Exception:
         return None
 
 
@@ -133,7 +159,6 @@ def get_run_metadata():
     Carrega metadata do último run do pipeline.
     Prioridade: HF Hub (reports/historico_runs.parquet) → arquivo local
     """
-    # Tenta HF Hub primeiro — fonte confiável no Streamlit Cloud
     try:
         df = carregar_do_hf('reports/historico_runs.parquet')
         if df is not None and not df.empty:
@@ -150,7 +175,6 @@ def get_run_metadata():
     except Exception:
         pass
 
-    # Fallback — arquivo local (desenvolvimento)
     import json
     from pathlib import Path
     raiz = Path(__file__).parent.parent.parent
@@ -177,6 +201,7 @@ def get_run_metadata():
             continue
     return None
 
+
 @st.cache_data(ttl=3600)
 def get_score_risco_hf():
     """
@@ -191,12 +216,9 @@ def get_score_risco_hf():
             repo_type='dataset'
         )
         df = pd.read_parquet(path)
-
-        dist = df['risco_v2'].value_counts().to_dict()
-
         return {
             'unidades':     df.to_dict(orient='records'),
-            'distribuicao': dist,
+            'distribuicao': df['risco_v2'].value_counts().to_dict(),
             'n_total':      len(df),
         }
     except Exception:
@@ -204,21 +226,35 @@ def get_score_risco_hf():
 
 
 @st.cache_data(ttl=3600)
-def get_previsao_bairros(horizonte: int = 1):
+def get_previsao_bairros():
     """
     Carrega previsão por bairro (GeoJSON IDW) do HF Hub.
-    horizonte: 1 a 4 (SE+1 a SE+4)
-    Retorna GeoDataFrame com colunas casos_seN e nivel_risco_seN.
+    Retorna tupla: (GeoDataFrame, limiares_dict)
+
+    Limiares são embutidos no GeoJSON pelo gerar_previsao_bairros.py
+    como propriedade do FeatureCollection — única fonte de verdade.
     """
     try:
         import geopandas as gpd
+        import json
         from huggingface_hub import hf_hub_download
+
         path = hf_hub_download(
             repo_id=HF_DATASET,
             filename='external/previsao_bairros_latest.geojson',
             repo_type='dataset'
         )
+
+        # Lê GeoDataFrame
         gdf = gpd.read_file(path)
-        return gdf
+
+        # Lê limiares do GeoJSON (metadados do FeatureCollection)
+        with open(path, encoding='utf-8') as f:
+            geojson_raw = json.load(f)
+
+        limiares = geojson_raw.get('limiares_risco', {})
+
+        return gdf, limiares
+
     except Exception:
-        return None
+        return None, {}

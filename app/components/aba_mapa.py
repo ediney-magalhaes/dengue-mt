@@ -1,9 +1,10 @@
 # ============================================================
-# Dengue MT — Componente: Aba Mapa de Risco v3.0
+# Dengue MT — Componente: Aba Mapa v4.0
 # ============================================================
-# Mapa choropleth IDW dinâmico — previsão semanal por bairro
+# Distribuição espacial de casos previstos por bairro (IDW)
 # Fonte: previsao_bairros_latest.geojson (HF Hub)
-# Slider SE+1 → SE+4
+# Horizonte controlado pelo sidebar (unificado)
+# Limiares adaptativos lidos do GeoJSON — zero hardcode
 # ============================================================
 
 import streamlit as st
@@ -21,44 +22,98 @@ CORES_RISCO = {
     'Muito Baixo': '#4575b4',
 }
 
+EMOJI_RISCO = {
+    'Muito Alto':  '🔴',
+    'Alto':        '🟠',
+    'Moderado':    '🟡',
+    'Baixo':       '🔵',
+    'Muito Baixo': '⚫',
+}
+
 MUNICIPIOS = {
     '5103403': 'Cuiabá',
     '5108402': 'Várzea Grande',
 }
 
 
+def _gerar_legenda_html(limiares: dict) -> str:
+    """
+    Gera legenda HTML dinâmica a partir dos limiares adaptativos.
+    Se não há limiares, mostra legenda genérica por nível.
+    """
+    # Pega os limiares do primeiro município como referência visual
+    # (a classificação real usa os limiares de cada município)
+    if limiares:
+        lim = list(limiares.values())[0]
+        p60 = lim['P60']
+        p75 = lim['P75']
+        p85 = lim['P85']
+        p95 = lim['P95']
+        linhas = (
+            f"🔴 Muito Alto (&gt;{p95:.2f} casos)<br>"
+            f"🟠 Alto ({p85:.2f}–{p95:.2f} casos)<br>"
+            f"🟡 Moderado ({p75:.2f}–{p85:.2f} casos)<br>"
+            f"🔵 Baixo ({p60:.2f}–{p75:.2f} casos)<br>"
+            f"⚫ Muito Baixo (&lt;{p60:.2f} casos)<br>"
+        )
+    else:
+        linhas = (
+            "🔴 Muito Alto<br>"
+            "🟠 Alto<br>"
+            "🟡 Moderado<br>"
+            "🔵 Baixo<br>"
+            "⚫ Muito Baixo<br>"
+        )
+
+    return f"""
+    <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
+         background-color: white; padding: 12px; border-radius: 8px;
+         border: 2px solid #ccc; font-size: 12px; line-height: 1.8;">
+    <b>🦟 Casos Previstos — Dengue MT</b><br>
+    {linhas}
+    <hr style="margin:4px 0">
+    <i>Previsão LightGBM v5 × IDW</i><br>
+    <i>Limiares adaptativos (percentis)</i>
+    </div>
+    """
+
+
 def render_aba_mapa():
-    st.subheader("🗺️ Mapa de Risco por Bairro — Previsão Semanal")
+    st.subheader("🗺️ Distribuição Espacial de Casos Previstos")
     st.caption(
         "Previsão de casos distribuída por bairro via IDW (Inverse Distance Weighting). "
         "Modelo LightGBM v5 atualizado automaticamente toda semana."
     )
 
-    # Carrega GeoDataFrame
-    gdf = get_previsao_bairros()
+    # Carrega GeoDataFrame + limiares (fonte única: GeoJSON)
+    resultado = get_previsao_bairros()
 
-    if gdf is None or gdf.empty:
+    if resultado is None or resultado[0] is None:
         st.error("❌ Dados de previsão por bairro indisponíveis")
         return
 
-    # ── Controles ─────────────────────────────────────────
-    col1, col2 = st.columns([1, 2])
-    with col1:
-        horizonte = st.radio(
-            "Horizonte de previsão",
-            options=[1, 2, 3, 4],
-            format_func=lambda x: f"SE+{x} ({x} semana{'s' if x > 1 else ''})",
-            horizontal=False,
-            index=0,
-        )
-    with col2:
-        mun_opcoes = ['Todos'] + list(MUNICIPIOS.values())
-        mun_sel    = st.selectbox("Município", mun_opcoes, index=0)
+    gdf, limiares = resultado
+
+    if gdf.empty:
+        st.error("❌ Dados de previsão por bairro indisponíveis")
+        return
+
+    # ── Horizonte vem do sidebar (controle unificado) ─────
+    horizonte = st.session_state.get('horizonte_semanas', 2)
+
+    # ── Filtro de município ───────────────────────────────
+    mun_opcoes = ['Todos'] + list(MUNICIPIOS.values())
+    mun_sel    = st.selectbox("Município", mun_opcoes, index=0)
 
     # Colunas do horizonte selecionado
-    col_casos  = f'casos_se{horizonte}'
-    col_nivel  = f'nivel_risco_se{horizonte}'
-    col_cor    = f'cor_se{horizonte}'
+    col_casos = f'casos_se{horizonte}'
+    col_nivel = f'nivel_risco_se{horizonte}'
+    col_cor   = f'cor_se{horizonte}'
+
+    # Verifica se as colunas existem
+    if col_casos not in gdf.columns:
+        st.warning(f"⚠️ Horizonte SE+{horizonte} não disponível nos dados.")
+        return
 
     # Filtra município
     gdf_fil = gdf.copy()
@@ -89,11 +144,10 @@ def render_aba_mapa():
         tiles='CartoDB positron'
     )
 
-    # Choropleth por bairro
     for _, row in gdf_fil.iterrows():
-        cor    = CORES_RISCO.get(row[col_nivel], '#4575b4')
-        casos  = row[col_casos]
-        nivel  = row[col_nivel]
+        cor   = CORES_RISCO.get(row[col_nivel], '#4575b4')
+        casos = row[col_casos]
+        nivel = row[col_nivel]
 
         folium.GeoJson(
             data=row['geometry'].__geo_interface__,
@@ -106,8 +160,8 @@ def render_aba_mapa():
             tooltip=folium.Tooltip(
                 f"<b>{row['NM_BAIRRO']}</b><br>"
                 f"Município: {row['NM_MUN']}<br>"
-                f"Casos previstos SE+{horizonte}: <b>{casos:.1f}</b><br>"
-                f"Risco: <b style='color:{cor}'>{nivel}</b>",
+                f"Casos previstos SE+{horizonte}: <b>{casos:.2f}</b><br>"
+                f"Classificação: <b style='color:{cor}'>{nivel}</b>",
                 sticky=True
             ),
             popup=folium.Popup(
@@ -115,37 +169,32 @@ def render_aba_mapa():
                     row['NM_BAIRRO'],
                     row['NM_MUN'],
                     '<br>'.join([
-                        'SE+{}: {:.1f} casos ({})'.format(
+                        'SE+{}: {:.2f} casos ({})'.format(
                             h, row[f'casos_se{h}'], row[f'nivel_risco_se{h}']
                         )
                         for h in range(1, 5)
+                        if f'casos_se{h}' in row.index
                     ])
                 ),
                 max_width=250
             )
         ).add_to(mapa)
 
-    # Legenda
-    legenda_html = """
-    <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
-         background-color: white; padding: 12px; border-radius: 8px;
-         border: 2px solid #ccc; font-size: 12px; line-height: 1.8;">
-    <b>🦟 Risco Previsto — Dengue MT</b><br>
-    🔴 Muito Alto (&gt;200 casos)<br>
-    🟠 Alto (100–200 casos)<br>
-    🟡 Moderado (50–100 casos)<br>
-    🔵 Baixo (20–50 casos)<br>
-    ⚫ Muito Baixo (&lt;20 casos)<br>
-    <hr style="margin:4px 0">
-    <i>Previsão LightGBM v5 × IDW</i>
-    </div>
-    """
+    # Legenda dinâmica
+    # Usa limiares do município filtrado, ou do primeiro se "Todos"
+    if mun_sel != 'Todos':
+        cd_sel = [k for k, v in MUNICIPIOS.items() if v == mun_sel][0]
+        lim_legenda = {cd_sel: limiares.get(cd_sel, {})}
+    else:
+        lim_legenda = limiares
+
+    legenda_html = _gerar_legenda_html(lim_legenda)
     mapa.get_root().html.add_child(folium.Element(legenda_html))
 
     st_folium(mapa, width=None, height=560, returned_objects=[])
 
     # ── Tabela top bairros ─────────────────────────────────
-    st.markdown(f"### 📋 Top 10 Bairros — Maior Risco Previsto (SE+{horizonte})")
+    st.markdown(f"### 📋 Top 10 Bairros — Maior Concentração Prevista (SE+{horizonte})")
     df_top = (
         gdf_fil[['NM_BAIRRO', 'NM_MUN', col_casos, col_nivel]]
         .sort_values(col_casos, ascending=False)
@@ -154,7 +203,7 @@ def render_aba_mapa():
             'NM_BAIRRO': 'Bairro',
             'NM_MUN':    'Município',
             col_casos:   'Casos previstos',
-            col_nivel:   'Nível de risco',
+            col_nivel:   'Classificação',
         })
     )
     st.dataframe(df_top, use_container_width=True, hide_index=True)
@@ -166,5 +215,6 @@ def render_aba_mapa():
         "espacialmente por bairro usando Inverse Distance Weighting (IDW) com pesos "
         "calibrados pelo histórico de notificações por UBS (SINAN + CNES). "
         "Propriedade pycnophylactic preservada — Σ casos bairros = previsão municipal. "
-        "Atualização automática toda semana."
+        "Classificação por limiares adaptativos (percentis P60/P75/P85/P95) "
+        "recalculados automaticamente a cada execução semanal."
     )

@@ -92,26 +92,36 @@ def carregar_ubs() -> pd.DataFrame:
         token=HF_TOKEN,
     )
     df = pd.read_parquet(path)
-    # Normaliza codigo_municipio para 7 dígitos string
-    df['codigo_municipio'] = df['codigo_municipio'].astype(str).str[:7]
-    print(f'  UBS carregadas: {len(df)}')
+
+    # score_risco_v2 usa código IBGE 6 dígitos (sem dígito verificador)
+    # Shapefile IBGE CD_MUN usa 7 dígitos — mapeamento explícito
+    MAP_MUNICIPIO = {'510340': '5103403', '510840': '5108402'}
+    df['codigo_municipio'] = (
+        df['codigo_municipio'].astype(str).map(MAP_MUNICIPIO)
+    )
+    df = df.dropna(subset=['codigo_municipio'])
+    print(f'  UBS carregadas: {len(df)} '
+          f'(Cuiabá: {len(df[df["codigo_municipio"]=="5103403"])} | '
+          f'VG: {len(df[df["codigo_municipio"]=="5108402"])})')
     return df
 
 
 def calcular_pesos_idw(gdf_bairros: gpd.GeoDataFrame,
                         df_ubs: pd.DataFrame) -> dict:
     """
-    Calcula pesos IDW por UBS para cada bairro.
+    Calcula score IDW bruto por bairro.
 
-    peso_ubs_i_no_bairro_j = casos_historicos_i / distancia(i,j)²
-    peso_normalizado = peso_ubs_i / Σ peso_ubs_k  (para o bairro j)
+    score_bairro = Σ (casos_historicos_ubs_i / distancia(centroide_bairro, ubs_i)²)
 
-    Retorna dict: {cd_bairro: {codigo_cnes: peso_normalizado}}
+    NÃO normaliza dentro do bairro — a normalização por município
+    acontece em gerar_previsao_bairros.py (calcular_fracoes_idw).
+    Isso preserva a diferenciação entre bairros: bairros próximos
+    a UBS com alto volume histórico recebem scores maiores.
+
+    Retorna dict: {cd_bairro: score_bruto}
     """
     print('Calculando centroides dos bairros...')
     gdf_bairros = gdf_bairros.copy()
-    # Reprojetar para SIRGAS 2000 UTM zona 21S (EPSG:31981)
-    # projeção métrica oficial para Mato Grosso — centroides mais precisos
     centroides = (
         gdf_bairros.geometry
         .to_crs('EPSG:31981')
@@ -122,41 +132,32 @@ def calcular_pesos_idw(gdf_bairros: gpd.GeoDataFrame,
     gdf_bairros['lon_centroide'] = centroides.x
 
     pesos = {}
-    print('Calculando pesos IDW...')
+    print('Calculando scores IDW...')
 
     for _, bairro in gdf_bairros.iterrows():
-        cd_bairro  = bairro['CD_BAIRRO']
-        cd_mun     = bairro['CD_MUN']
-        lat_b      = bairro['lat_centroide']
-        lon_b      = bairro['lon_centroide']
+        cd_bairro = bairro['CD_BAIRRO']
+        cd_mun    = bairro['CD_MUN']
+        lat_b     = bairro['lat_centroide']
+        lon_b     = bairro['lon_centroide']
 
-        # Filtra UBS do mesmo município
         df_mun = df_ubs[df_ubs['codigo_municipio'] == cd_mun].copy()
 
         if df_mun.empty:
-            pesos[cd_bairro] = {}
+            pesos[cd_bairro] = 0.0
             continue
 
-        pesos_brutos = {}
+        score = 0.0
         for _, ubs in df_mun.iterrows():
             dist_km = haversine(
                 lat_b, lon_b,
                 ubs['latitude_estabelecimento_decimo_grau'],
                 ubs['longitude_estabelecimento_decimo_grau']
             )
-            # Evita divisão por zero — distância mínima 0.1 km
             dist_km = max(dist_km, 0.1)
-
-            # Peso = casos históricos / distância²
             casos = max(float(ubs['casos_historicos']), 1.0)
-            pesos_brutos[str(ubs['codigo_cnes'])] = casos / (dist_km ** 2)
+            score += casos / (dist_km ** 2)
 
-        # Normaliza
-        total = sum(pesos_brutos.values())
-        pesos[cd_bairro] = {
-            cnes: round(p / total, 6)
-            for cnes, p in pesos_brutos.items()
-        }
+        pesos[cd_bairro] = round(score, 4)
 
     return pesos
 
@@ -194,10 +195,9 @@ def main():
     print(f'  Pesos calculados para {len(pesos)} bairros')
 
     # 4. Salva pesos JSON
-    # Inclui metadados do bairro para facilitar o dashboard
     output_pesos = {
         'metadata': {
-            'metodo':      'IDW — casos_historicos / distancia_km²',
+            'metodo':      'IDW — Σ(casos_historicos / distancia_km²) por bairro',
             'municipios':  list(MUNICIPIOS.values()),
             'n_bairros':   len(pesos),
             'n_ubs':       len(df_ubs),
@@ -210,6 +210,11 @@ def main():
     with open(path_pesos, 'w', encoding='utf-8') as f:
         json.dump(output_pesos, f, ensure_ascii=False, indent=2)
     print(f'  Pesos salvos: {path_pesos.name}')
+
+    # Resumo de diferenciação
+    vals = list(pesos.values())
+    print(f'  Score min: {min(vals):.2f} | max: {max(vals):.2f} | '
+          f'ratio max/min: {max(vals)/max(min(vals), 0.01):.1f}x')
 
     # 5. Salva GeoJSON dos bairros com metadados
     gdf_export = gdf_bairros[[

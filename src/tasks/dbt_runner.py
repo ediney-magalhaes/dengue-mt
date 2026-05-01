@@ -104,10 +104,21 @@ def executar_dbt_test():
 
     resultado = _executar_dbt(['dbt', 'test'], logger)
 
-    # Extrai contagem de PASS/FAIL do output
+    # Extrai contagem de PASS/FAIL da linha de resumo final do dbt
+    # Formato: Done. PASS=59 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=59
+    import re
     stdout = resultado['stdout']
-    pass_count = stdout.count('PASS')
-    fail_count = stdout.count('FAIL') + stdout.count('ERROR')
+    resumo_match = re.search(
+        r'PASS=(\d+).*?ERROR=(\d+)',
+        stdout
+    )
+    if resumo_match:
+        pass_count = int(resumo_match.group(1))
+        fail_count = int(resumo_match.group(2))
+    else:
+        # Fallback: conta ocorrências brutas
+        pass_count = stdout.count('PASS')
+        fail_count = stdout.count('FAIL') + stdout.count('ERROR')
 
     if not resultado['sucesso']:
         logger.warning(f"dbt test — {fail_count} falhas detectadas")

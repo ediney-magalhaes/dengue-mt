@@ -129,7 +129,28 @@ def fazer_previsao_local(modelo, df_gold, semanas=4):
 
 @st.cache_data(ttl=1800)
 def get_run_metadata():
-    """Carrega metadata do último run do pipeline."""
+    """
+    Carrega metadata do último run do pipeline.
+    Prioridade: HF Hub (reports/historico_runs.parquet) → arquivo local
+    """
+    # Tenta HF Hub primeiro — fonte confiável no Streamlit Cloud
+    try:
+        df = carregar_do_hf('reports/historico_runs.parquet')
+        if df is not None and not df.empty:
+            ultimo = df.sort_values('timestamp').iloc[-1]
+            return {
+                'nivel_drift': ultimo.get('nivel_drift'),
+                'drift_score': ultimo.get('drift_score'),
+                'drift_mae':   ultimo.get('drift_mae'),
+                'drift_r2':    ultimo.get('drift_r2'),
+                'retreino':    ultimo.get('retreino', 'nao_executado'),
+                'timestamp':   str(ultimo.get('timestamp', '')),
+                'fallbacks':   {},
+            }
+    except Exception:
+        pass
+
+    # Fallback — arquivo local (desenvolvimento)
     import json
     from pathlib import Path
     raiz = Path(__file__).parent.parent.parent
@@ -144,14 +165,60 @@ def get_run_metadata():
                 meta = json.load(f)
             resultados = meta.get('resultados', {})
             return {
-                'nivel_drift':  resultados.get('nivel_drift', meta.get('nivel_drift')),
-                'drift_score':  resultados.get('drift_score', meta.get('drift_score')),
-                'drift_mae':    resultados.get('drift_mae', meta.get('drift_mae')),
-                'drift_r2':     resultados.get('drift_r2', meta.get('drift_r2')),
-                'retreino':     resultados.get('retreino', meta.get('retreino')),
-                'timestamp':    meta.get('timestamp', ''),
-                'fallbacks':    resultados.get('fallbacks', meta.get('fallbacks', {})),
+                'nivel_drift': resultados.get('nivel_drift', meta.get('nivel_drift')),
+                'drift_score': resultados.get('drift_score', meta.get('drift_score')),
+                'drift_mae':   resultados.get('drift_mae', meta.get('drift_mae')),
+                'drift_r2':    resultados.get('drift_r2', meta.get('drift_r2')),
+                'retreino':    resultados.get('retreino', meta.get('retreino')),
+                'timestamp':   meta.get('timestamp', ''),
+                'fallbacks':   resultados.get('fallbacks', meta.get('fallbacks', {})),
             }
-        except:
+        except Exception:
             continue
     return None
+
+@st.cache_data(ttl=3600)
+def get_score_risco_hf():
+    """
+    Carrega score de risco por UBS do HF Hub.
+    Usado pelo mapa estático de referência histórica.
+    """
+    try:
+        from huggingface_hub import hf_hub_download
+        path = hf_hub_download(
+            repo_id=HF_DATASET,
+            filename='external/score_risco_v2.parquet',
+            repo_type='dataset'
+        )
+        df = pd.read_parquet(path)
+
+        dist = df['risco_v2'].value_counts().to_dict()
+
+        return {
+            'unidades':     df.to_dict(orient='records'),
+            'distribuicao': dist,
+            'n_total':      len(df),
+        }
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=3600)
+def get_previsao_bairros(horizonte: int = 1):
+    """
+    Carrega previsão por bairro (GeoJSON IDW) do HF Hub.
+    horizonte: 1 a 4 (SE+1 a SE+4)
+    Retorna GeoDataFrame com colunas casos_seN e nivel_risco_seN.
+    """
+    try:
+        import geopandas as gpd
+        from huggingface_hub import hf_hub_download
+        path = hf_hub_download(
+            repo_id=HF_DATASET,
+            filename='external/previsao_bairros_latest.geojson',
+            repo_type='dataset'
+        )
+        gdf = gpd.read_file(path)
+        return gdf
+    except Exception:
+        return None

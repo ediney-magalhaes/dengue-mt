@@ -1,5 +1,5 @@
 """
-dashboard.py — v3
+dashboard.py — v4
 Dashboard interativo — Sistema Preditivo de Dengue MT
 Modularizado em app/components/
 
@@ -37,8 +37,8 @@ with st.sidebar:
     st.markdown("---")
 
     horizonte = st.slider(
-        "Horizonte de previsão (dias)",
-        min_value=7, max_value=28, value=14, step=7
+        "Horizonte de previsão (semanas)",
+        min_value=1, max_value=4, value=2, step=1
     )
 
     st.markdown("---")
@@ -47,9 +47,8 @@ with st.sidebar:
     if saude:
         st.success(f"✅ {saude['modelo']}")
         metricas = saude.get('metricas', {})
-        st.metric("R²",    f"{metricas.get('R2', 'N/A')}")
-        st.metric("MAE",   f"{metricas.get('MAE', 'N/A')} casos/dia")
-        st.metric("sMAPE", f"{metricas.get('sMAPE', 'N/A')}%")
+        st.metric("R²",  f"{metricas.get('R2', 'N/A')}")
+        st.metric("MAE", f"{metricas.get('MAE', 'N/A')} casos/semana")
     else:
         st.error("❌ API indisponível")
 
@@ -74,24 +73,35 @@ st.markdown("---")
 # ============================================================
 # MÉTRICAS PRINCIPAIS
 # ============================================================
+import pandas as pd
+
 df_hist = get_historico()
 
 if df_hist is not None:
-    casos_ultimo = int(df_hist['casos'].iloc[-1])
-    media_7d     = int(df_hist['casos'].tail(7).mean())
-    total_2024   = int(df_hist[df_hist['data'].dt.year == 2024]['casos'].sum())
-    pico_2024    = int(df_hist[df_hist['data'].dt.year == 2024]['casos'].max())
+    df_hist['data_se'] = pd.to_datetime(df_hist['data_se'])
+    df_hist['ano']     = df_hist['data_se'].dt.year
+
+    # Agrega ambos municípios por semana
+    df_sem = df_hist.groupby('data_se')['casos_confirmados'].sum().reset_index()
+    df_sem = df_sem.sort_values('data_se')
+
+    ano_atual    = df_hist['ano'].max()
+    ultima_se    = int(df_sem['casos_confirmados'].iloc[-1])
+    media_4se    = int(df_sem['casos_confirmados'].tail(4).mean())
+    total_ano    = int(df_hist[df_hist['ano'] == ano_atual]['casos_confirmados'].sum())
+    pico_ano     = int(df_hist[df_hist['ano'] == ano_atual]['casos_confirmados'].max())
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        st.metric("📅 Último registro", f"{casos_ultimo} casos",
-                  delta=f"{casos_ultimo - media_7d:+.0f} vs média 7d")
+        st.metric("📅 Última SE",
+                  f"{ultima_se} casos",
+                  delta=f"{ultima_se - media_4se:+.0f} vs média 4SE")
     with col2:
-        st.metric("📊 Média 7 dias", f"{media_7d} casos/dia")
+        st.metric("📊 Média 4 semanas", f"{media_4se} casos/SE")
     with col3:
-        st.metric("📈 Total 2024", f"{total_2024:,} casos")
+        st.metric(f"📈 Total {ano_atual}", f"{total_ano:,} casos")
     with col4:
-        st.metric("⚠️ Pico 2024", f"{pico_2024} casos/dia")
+        st.metric(f"⚠️ Pico {ano_atual}", f"{pico_ano} casos/SE")
 
 st.markdown("---")
 

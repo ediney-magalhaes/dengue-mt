@@ -16,8 +16,8 @@ HF_GOLD_LATEST = 'gold/dataset_features_latest.parquet'
 def render_aba_previsao(horizonte: int):
     st.subheader("🤖 Previsão de Casos — Próximas semanas")
 
-    # Converter horizonte de dias para semanas
-    semanas = max(horizonte // 7, 1)
+    # horizonte já vem em semanas (1-4) — dashboard.py v4
+    semanas = max(horizonte, 1)
 
     prev_data = get_previsao(semanas)
 

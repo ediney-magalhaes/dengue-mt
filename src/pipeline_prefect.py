@@ -38,7 +38,7 @@ from src.tasks.ingestao import (
 from src.tasks.dbt_runner  import executar_dbt_run, executar_dbt_test
 from src.tasks.drift       import monitorar_drift_modelo
 from src.tasks.retreino    import retreinar_modelo
-from src.tasks.publicacao  import publicar_bronze_incremental, publicar_gold_versionado
+from src.tasks.publicacao  import publicar_bronze_incremental, publicar_gold_versionado, publicar_previsao_bairros
 from src.tasks.relatorio   import gerar_relatorio_execucao
 from src.tasks.alertas     import (
     alerta_pipeline_ok, alerta_pipeline_falhou,
@@ -151,6 +151,10 @@ def pipeline_semanal():
     publicacao_gold = publicar_gold_versionado()
     log_etapa('publicar_gold', t0, publicacao_gold)
 
+    t0 = time.time()
+    publicacao_bairros = publicar_previsao_bairros()
+    log_etapa('publicar_previsao_bairros', t0, publicacao_bairros)
+
     # ============================================================
     # ETAPA 4 — DRIFT + RETREINO
     # ============================================================
@@ -187,10 +191,11 @@ def pipeline_semanal():
         )
 
         resumo_parcial = _montar_resumo_parcial(
-            data_corte, resultado_infodengue, resultado_nasa,
-            resultado_oni, resultado_trends, resultado_modis,
-            resultado_dbt_run
-        )
+        data_corte, resultado_infodengue, resultado_nasa,
+        resultado_oni, resultado_trends, resultado_modis,
+        resultado_dbt_run,
+        publicacao_bairros=publicacao_bairros
+    )
 
         from src.tasks.relatorio import atualizar_changelog
         atualizar_changelog(resumo_parcial, resultado_retreino)
@@ -216,12 +221,13 @@ def pipeline_semanal():
     # ETAPA 5 — RELATÓRIO + MLFLOW
     # ============================================================
 
-    resumo = _montar_resumo_parcial(
+    resumo_parcial = _montar_resumo_parcial(
         data_corte, resultado_infodengue, resultado_nasa,
         resultado_oni, resultado_trends, resultado_modis,
-        resultado_dbt_run
+        resultado_dbt_run,
+        publicacao_bairros=publicacao_bairros  # ← adicionar
     )
-    resumo.update({
+    resumo_parcial.update({
         'dbt_test_pass':   resultado_dbt_test.get('pass', 0),
         'dbt_test_fail':   resultado_dbt_test.get('fail', 0),
         'drift_mae':       drift.get('mae_recente'),
@@ -235,31 +241,31 @@ def pipeline_semanal():
         'gold_snapshot':     publicacao_gold.get('snapshot'),
     })
 
-    _salvar_metadata(resumo)
+    _salvar_metadata(resumo_parcial)
     log_pipeline_end(datetime.now().isoformat(), resultado_retreino['status'])
-    alerta_pipeline_ok(resumo)
+    alerta_pipeline_ok(resumo_parcial)
 
     # MLflow
     from src.tasks.mlflow_tracking import registrar_run_mlflow
-    run_id = registrar_run_mlflow(resumo, drift=drift)
+    run_id = registrar_run_mlflow(resumo_parcial, drift=drift)
     if run_id:
-        resumo['mlflow_run_id'] = run_id
+        resumo_parcial['mlflow_run_id'] = run_id
         logger.info(f"MLflow run_id: {run_id}")
 
     # Relatório
     from src.tasks.relatorio import publicar_relatorio_hf, atualizar_historico_runs
-    relatorio_path = gerar_relatorio_execucao(resumo)
-    resultado_relatorio = publicar_relatorio_hf(relatorio_path, resumo)
+    relatorio_path = gerar_relatorio_execucao(resumo_parcial)
+    resultado_relatorio = publicar_relatorio_hf(relatorio_path, resumo_parcial)
     if resultado_relatorio.get('status') == 'ok':
-        resumo['relatorio_url'] = resultado_relatorio.get('url_latest')
+        resumo_parcial['relatorio_url'] = resultado_relatorio.get('url_latest')
         logger.info(f"Relatório publicado: {resultado_relatorio.get('url_latest')}")
     else:
         logger.warning(f"Relatório não publicado: {resultado_relatorio.get('motivo')}")
 
-    atualizar_historico_runs(resumo)
+    atualizar_historico_runs(resumo_parcial)
     logger.info("Pipeline concluído com sucesso!")
 
-    return resumo
+    return resumo_parcial
 
 
 # ============================================================
@@ -269,7 +275,8 @@ def pipeline_semanal():
 def _montar_resumo_parcial(
     data_corte, resultado_infodengue, resultado_nasa,
     resultado_oni, resultado_trends, resultado_modis,
-    resultado_dbt_run, status='ok'
+    resultado_dbt_run, status='ok',
+    publicacao_bairros=None
 ):
     return {
         'pipeline_version': PIPELINE_VERSION,
@@ -287,6 +294,8 @@ def _montar_resumo_parcial(
         'google_trends':    resultado_trends['status'],
         'modis':            resultado_modis['status'],
         'dbt_run':          resultado_dbt_run['status'],
+        'previsao_bairros': publicacao_bairros.get('status', 'nao_executado')
+                            if publicacao_bairros else 'nao_executado',
     }
 
 

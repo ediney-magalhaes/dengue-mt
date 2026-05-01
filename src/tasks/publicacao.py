@@ -267,3 +267,45 @@ def publicar_gold_versionado():
     except Exception as e:
         logger.error(f"Erro ao publicar Gold: {e}")
         return {'status': 'erro', 'motivo': str(e)}
+    
+# ============================================================
+# TASK 3 — PREVISÃO POR BAIRRO (IDW)
+# ============================================================
+
+@task(name="publicar_previsao_bairros_hf")
+def publicar_previsao_bairros():
+    """
+    Gera previsão municipal SE+1→SE+4 via LightGBM,
+    distribui pelos 143 bairros via IDW mass-preserving
+    e publica GeoJSON no HF Hub.
+    Executa após publicar_gold_versionado() — depende do Gold atualizado.
+    """
+    logger = get_run_logger()
+    logger.info("Gerando previsão por bairro via IDW...")
+
+    try:
+        import subprocess
+        from pathlib import Path
+
+        script = Path(__file__).resolve().parents[2] / 'scripts' / 'gerar_previsao_bairros.py'
+
+        resultado = subprocess.run(
+            ['python', str(script)],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+
+        if resultado.returncode != 0:
+            logger.error(f"gerar_previsao_bairros falhou: {resultado.stderr}")
+            return {'status': 'erro', 'motivo': resultado.stderr}
+
+        logger.info(resultado.stdout)
+        return {
+            'status':  'ok',
+            'fonte':   'previsao_bairros_idw',
+        }
+
+    except Exception as e:
+        logger.error(f"Erro ao gerar previsão por bairro: {e}")
+        return {'status': 'erro', 'motivo': str(e)}

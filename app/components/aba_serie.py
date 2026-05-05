@@ -1,15 +1,22 @@
 # ============================================================
-# Dengue MT — Componente: Aba Série Temporal
+# Dengue MT — Componente: Aba Série Temporal v5
+# ============================================================
+# Município controlado pelo sidebar (parâmetro)
+# Filtro de período (ano) é específico desta aba
 # ============================================================
 
 import streamlit as st
 import plotly.express as px
-import plotly.graph_objects as go
 import pandas as pd
 from components.dados import get_historico
 
+MUNICIPIOS_ID = {
+    'Cuiabá':        5103403,
+    'Várzea Grande': 5108402,
+}
 
-def render_aba_serie():
+
+def render_aba_serie(municipio_sel: str = 'Todos'):
     df_hist = get_historico()
 
     if df_hist is None:
@@ -25,34 +32,35 @@ def render_aba_serie():
 
     st.subheader(f"Evolução dos Casos Confirmados — MT ({ano_min}–{ano_max})")
 
-    # ── Filtros ───────────────────────────────────────────
-    col_f1, col_f2, col_f3 = st.columns(3)
+    # ── Filtro de período (específico desta aba) ──────────
+    col_f1, col_f2 = st.columns(2)
     anos = sorted(df_hist['ano'].unique())
     with col_f1:
         ano_ini = st.selectbox("Ano início", anos, index=0)
     with col_f2:
         ano_fim = st.selectbox("Ano fim", anos, index=len(anos)-1)
-    with col_f3:
-        municipios = {5103403: 'Cuiabá', 5108402: 'Várzea Grande', 0: 'Ambos'}
-        mun_opcao  = st.selectbox("Município", list(municipios.values()), index=2)
-        mun_id     = [k for k, v in municipios.items() if v == mun_opcao][0]
 
-    # ── Filtra período e município ─────────────────────────
+    # ── Filtra período ─────────────────────────────────────
     df_fil = df_hist[
         (df_hist['ano'] >= ano_ini) &
         (df_hist['ano'] <= ano_fim)
     ].copy()
 
-    if mun_id != 0:
-        df_fil = df_fil[df_fil['municipio_id'] == mun_id]
+    # ── Filtra município (vem do sidebar) ──────────────────
+    if municipio_sel != 'Todos':
+        mun_id = MUNICIPIOS_ID.get(municipio_sel)
+        if mun_id:
+            df_fil = df_fil[df_fil['municipio_id'] == mun_id]
 
-    # Agrega por semana (soma municípios se "Ambos")
+    label_mun = municipio_sel
+
+    # Agrega por semana (soma municípios se "Todos")
     df_sem = df_fil.groupby('data_se')['casos_confirmados'].sum().reset_index()
 
     # ── Gráfico série temporal ─────────────────────────────
     fig1 = px.area(
         df_sem, x='data_se', y='casos_confirmados',
-        title=f"Casos semanais — {mun_opcao} — {ano_ini} a {ano_fim}",
+        title=f"Casos semanais — {label_mun} — {ano_ini} a {ano_fim}",
         labels={'data_se': 'Semana Epidemiológica', 'casos_confirmados': 'Casos'},
         color_discrete_sequence=['#e63946']
     )
@@ -61,13 +69,14 @@ def render_aba_serie():
 
     # ── Heatmap sazonalidade ───────────────────────────────
     pivot = df_fil.groupby(['ano', 'mes'])['casos_confirmados'].sum().unstack()
-    pivot.columns = ['Jan','Fev','Mar','Abr','Mai','Jun',
-                     'Jul','Ago','Set','Out','Nov','Dez']
+    meses_map = {1:'Jan', 2:'Fev', 3:'Mar', 4:'Abr', 5:'Mai', 6:'Jun',
+                 7:'Jul', 8:'Ago', 9:'Set', 10:'Out', 11:'Nov', 12:'Dez'}
+    pivot.columns = [meses_map.get(c, c) for c in pivot.columns]
 
     fig2 = px.imshow(
         pivot,
         color_continuous_scale='YlOrRd',
-        title=f"Sazonalidade — Casos por Mês/Ano — {mun_opcao}",
+        title=f"Sazonalidade — Casos por Mês/Ano — {label_mun}",
         labels={'x': 'Mês', 'y': 'Ano', 'color': 'Casos'}
     )
     fig2.update_layout(height=350)

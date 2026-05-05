@@ -38,6 +38,7 @@ with st.sidebar:
         "Horizonte de previsão (semanas)",
         min_value=1, max_value=4, value=2, step=1
     )
+    st.caption("Aplica-se ao Mapa e Previsão")
 
     municipio_sel = st.selectbox(
         "Município",
@@ -113,10 +114,10 @@ with aba1:
     render_aba_mapa(horizonte, municipio_sel)
 
 with aba2:
-    render_aba_serie()
+    render_aba_serie(municipio_sel)
 
 with aba3:
-    render_aba_previsao(horizonte)
+    render_aba_previsao(horizonte, municipio_sel)
 
 with aba4:
     render_aba_monitoramento()

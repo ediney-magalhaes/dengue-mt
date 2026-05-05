@@ -1,15 +1,12 @@
 """
-dashboard.py — v4
+dashboard.py — v5
 Dashboard interativo — Sistema Preditivo de Dengue MT
 Modularizado em app/components/
-
 Como rodar:
     streamlit run app/dashboard.py
 """
-
 import streamlit as st
-from datetime import datetime
-
+import pandas as pd
 from components.dados import get_saude, get_historico
 from components.banner_drift import render_banner_drift
 from components.aba_mapa import render_aba_mapa
@@ -34,6 +31,7 @@ st.set_page_config(
 with st.sidebar:
     st.markdown("## 🦟 Dengue MT")
     st.markdown("**Sistema Preditivo de Surtos**")
+    st.markdown("*Cuiabá e Várzea Grande — IFMT*")
     st.markdown("---")
 
     horizonte = st.slider(
@@ -41,8 +39,15 @@ with st.sidebar:
         min_value=1, max_value=4, value=2, step=1
     )
 
+    municipio_sel = st.selectbox(
+        "Município",
+        options=["Todos", "Cuiabá", "Várzea Grande"],
+        index=0
+    )
+
     st.markdown("---")
     st.markdown("### 📊 Status do Modelo")
+
     saude = get_saude()
     if saude:
         st.success(f"✅ {saude['modelo']}")
@@ -50,46 +55,34 @@ with st.sidebar:
         st.metric("R²",  f"{metricas.get('R2', 'N/A')}")
         st.metric("MAE", f"{metricas.get('MAE', 'N/A')} casos/semana")
     else:
-        st.error("❌ API indisponível")
+        st.warning("⚠️ Metadados do modelo indisponíveis")
 
     st.markdown("---")
-    st.caption(f"Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
-    st.caption("IFMT — Projeto Extensionista 2026")
-    st.caption("Ediney Magalhães")
+    render_banner_drift()
 
 # ============================================================
-# CABEÇALHO
+# TÍTULO E CABEÇALHO
 # ============================================================
-st.markdown("# 🦟 Sistema Preditivo de Dengue — MT")
-st.markdown("**Cuiabá e Várzea Grande | Instituto Federal de Mato Grosso (IFMT)**")
+st.title("🦟 Sistema Preditivo de Dengue — MT")
+st.caption(
+    "Cuiabá e Várzea Grande | Instituto Federal de Mato Grosso (IFMT)"
+)
 
-# ============================================================
-# BANNER DE DRIFT — status do modelo em tempo real
-# ============================================================
-render_banner_drift()
-
-st.markdown("---")
-
-# ============================================================
-# MÉTRICAS PRINCIPAIS
-# ============================================================
-import pandas as pd
-
+# ── Métricas resumo ─────────────────────────────────────────
 df_hist = get_historico()
 
-if df_hist is not None:
+if df_hist is not None and not df_hist.empty:
     df_hist['data_se'] = pd.to_datetime(df_hist['data_se'])
-    df_hist['ano']     = df_hist['data_se'].dt.year
+    ano_atual = df_hist['data_se'].dt.year.max()
 
-    # Agrega ambos municípios por semana
-    df_sem = df_hist.groupby('data_se')['casos_confirmados'].sum().reset_index()
-    df_sem = df_sem.sort_values('data_se')
-
-    ano_atual    = df_hist['ano'].max()
-    ultima_se    = int(df_sem['casos_confirmados'].iloc[-1])
-    media_4se    = int(df_sem['casos_confirmados'].tail(4).mean())
-    total_ano    = int(df_hist[df_hist['ano'] == ano_atual]['casos_confirmados'].sum())
-    pico_ano     = int(df_hist[df_hist['ano'] == ano_atual]['casos_confirmados'].max())
+    ultima_se = int(df_hist['casos_confirmados'].iloc[-1])
+    media_4se = int(df_hist['casos_confirmados'].tail(4).mean())
+    total_ano = int(
+        df_hist[df_hist['data_se'].dt.year == ano_atual]['casos_confirmados'].sum()
+    )
+    pico_ano = int(
+        df_hist[df_hist['data_se'].dt.year == ano_atual]['casos_confirmados'].max()
+    )
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -117,7 +110,7 @@ aba1, aba2, aba3, aba4, aba5 = st.tabs([
 ])
 
 with aba1:
-    render_aba_mapa()
+    render_aba_mapa(horizonte, municipio_sel)
 
 with aba2:
     render_aba_serie()

@@ -1,15 +1,14 @@
 # ============================================================
-# Dengue MT — Componente: Aba Mapa v4.0
+# Dengue MT — Componente: Aba Mapa v5.0
 # ============================================================
 # Distribuição espacial de casos previstos por bairro (IDW)
 # Fonte: previsao_bairros_latest.geojson (HF Hub)
-# Horizonte controlado pelo sidebar (unificado)
+# Horizonte e município controlados pelo sidebar (parâmetros)
 # Limiares adaptativos lidos do GeoJSON — zero hardcode
 # ============================================================
 
 import streamlit as st
 import folium
-import pandas as pd
 from streamlit_folium import st_folium
 from components.dados import get_previsao_bairros
 
@@ -22,53 +21,58 @@ CORES_RISCO = {
     'Muito Baixo': '#4575b4',
 }
 
-EMOJI_RISCO = {
-    'Muito Alto':  '🔴',
-    'Alto':        '🟠',
-    'Moderado':    '🟡',
-    'Baixo':       '🔵',
-    'Muito Baixo': '⚫',
-}
-
 MUNICIPIOS = {
     '5103403': 'Cuiabá',
     '5108402': 'Várzea Grande',
 }
 
 
-def _gerar_legenda_html(limiares: dict) -> str:
+def _gerar_legenda_html(limiares: dict, mun_sel: str) -> str:
     """
     Gera legenda HTML dinâmica a partir dos limiares adaptativos.
-    Se não há limiares, mostra legenda genérica por nível.
+    Quando 'Todos', usa limiares do primeiro município como referência.
+    Quando um município específico, usa os limiares dele.
     """
-    # Pega os limiares do primeiro município como referência visual
-    # (a classificação real usa os limiares de cada município)
-    if limiares:
-        lim = list(limiares.values())[0]
-        p60 = lim['P60']
-        p75 = lim['P75']
-        p85 = lim['P85']
-        p95 = lim['P95']
+    lim_exibir = None
+
+    if mun_sel != 'Todos':
+        cd_sel = [k for k, v in MUNICIPIOS.items() if v == mun_sel]
+        if cd_sel and cd_sel[0] in limiares:
+            lim_exibir = limiares[cd_sel[0]]
+
+    if lim_exibir is None and limiares:
+        # "Todos" — mostra limiares de cada município separadamente
+        blocos = []
+        for cd_mun, lim in limiares.items():
+            nome = MUNICIPIOS.get(cd_mun, cd_mun)
+            blocos.append(
+                f"<b>{nome}:</b><br>"
+                f"&nbsp; 🔴 Muito Alto (&gt;{lim['P95']:.2f})<br>"
+                f"&nbsp; 🟠 Alto ({lim['P85']:.2f}–{lim['P95']:.2f})<br>"
+                f"&nbsp; 🟡 Moderado ({lim['P75']:.2f}–{lim['P85']:.2f})<br>"
+                f"&nbsp; 🔵 Baixo ({lim['P60']:.2f}–{lim['P75']:.2f})<br>"
+                f"&nbsp; ⚫ Muito Baixo (&lt;{lim['P60']:.2f})<br>"
+            )
+        linhas = "<br>".join(blocos)
+    elif lim_exibir:
         linhas = (
-            f"🔴 Muito Alto (&gt;{p95:.2f} casos)<br>"
-            f"🟠 Alto ({p85:.2f}–{p95:.2f} casos)<br>"
-            f"🟡 Moderado ({p75:.2f}–{p85:.2f} casos)<br>"
-            f"🔵 Baixo ({p60:.2f}–{p75:.2f} casos)<br>"
-            f"⚫ Muito Baixo (&lt;{p60:.2f} casos)<br>"
+            f"🔴 Muito Alto (&gt;{lim_exibir['P95']:.2f} casos)<br>"
+            f"🟠 Alto ({lim_exibir['P85']:.2f}–{lim_exibir['P95']:.2f})<br>"
+            f"🟡 Moderado ({lim_exibir['P75']:.2f}–{lim_exibir['P85']:.2f})<br>"
+            f"🔵 Baixo ({lim_exibir['P60']:.2f}–{lim_exibir['P75']:.2f})<br>"
+            f"⚫ Muito Baixo (&lt;{lim_exibir['P60']:.2f})<br>"
         )
     else:
         linhas = (
-            "🔴 Muito Alto<br>"
-            "🟠 Alto<br>"
-            "🟡 Moderado<br>"
-            "🔵 Baixo<br>"
-            "⚫ Muito Baixo<br>"
+            "🔴 Muito Alto<br>🟠 Alto<br>"
+            "🟡 Moderado<br>🔵 Baixo<br>⚫ Muito Baixo<br>"
         )
 
     return f"""
     <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
          background-color: white; padding: 12px; border-radius: 8px;
-         border: 2px solid #ccc; font-size: 12px; line-height: 1.8;">
+         border: 2px solid #ccc; font-size: 11px; line-height: 1.7;
+         max-height: 350px; overflow-y: auto;">
     <b>🦟 Casos Previstos — Dengue MT</b><br>
     {linhas}
     <hr style="margin:4px 0">
@@ -78,50 +82,51 @@ def _gerar_legenda_html(limiares: dict) -> str:
     """
 
 
-def render_aba_mapa():
+def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos'):
+    """
+    Renderiza mapa choropleth de distribuição espacial de casos previstos.
+
+    Parâmetros:
+        horizonte: semana epidemiológica futura (1-4)
+        mun_sel: 'Todos', 'Cuiabá' ou 'Várzea Grande'
+    """
     st.subheader("🗺️ Distribuição Espacial de Casos Previstos")
     st.caption(
         "Previsão de casos distribuída por bairro via IDW (Inverse Distance Weighting). "
         "Modelo LightGBM v5 atualizado automaticamente toda semana."
     )
 
-    # Carrega GeoDataFrame + limiares (fonte única: GeoJSON)
+    # ── Carrega GeoDataFrame + limiares (fonte única: GeoJSON) ──
     resultado = get_previsao_bairros()
 
     if resultado is None or resultado[0] is None:
-        st.error("❌ Dados de previsão por bairro indisponíveis")
+        st.error("❌ Dados de previsão por bairro não disponíveis.")
         return
 
     gdf, limiares = resultado
 
-    if gdf.empty:
-        st.error("❌ Dados de previsão por bairro indisponíveis")
-        return
-
-    # ── Horizonte vem do sidebar (controle unificado) ─────
-    horizonte = st.session_state.get('horizonte_semanas', 2)
-
-    # ── Filtro de município ───────────────────────────────
-    mun_opcoes = ['Todos'] + list(MUNICIPIOS.values())
-    mun_sel    = st.selectbox("Município", mun_opcoes, index=0)
-
-    # Colunas do horizonte selecionado
+    # Colunas dinâmicas baseadas no horizonte
     col_casos = f'casos_se{horizonte}'
     col_nivel = f'nivel_risco_se{horizonte}'
     col_cor   = f'cor_se{horizonte}'
 
-    # Verifica se as colunas existem
+    # Verifica se as colunas do horizonte existem
     if col_casos not in gdf.columns:
-        st.warning(f"⚠️ Horizonte SE+{horizonte} não disponível nos dados.")
+        st.error(f"❌ Horizonte SE+{horizonte} não disponível nos dados.")
         return
 
     # Filtra município
     gdf_fil = gdf.copy()
     if mun_sel != 'Todos':
-        cd_mun = [k for k, v in MUNICIPIOS.items() if v == mun_sel][0]
-        gdf_fil = gdf_fil[gdf_fil['CD_MUN'] == cd_mun]
+        cd_mun = [k for k, v in MUNICIPIOS.items() if v == mun_sel]
+        if cd_mun:
+            gdf_fil = gdf_fil[gdf_fil['CD_MUN'] == cd_mun[0]]
 
-    # ── Métricas resumo ───────────────────────────────────
+    if gdf_fil.empty:
+        st.warning("⚠️ Nenhum bairro encontrado para o filtro selecionado.")
+        return
+
+    # ── Métricas resumo ───────────────────────────────────────
     dist = gdf_fil[col_nivel].value_counts().to_dict()
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("🔴 Muito Alto",  dist.get('Muito Alto', 0))
@@ -132,7 +137,7 @@ def render_aba_mapa():
 
     st.markdown("---")
 
-    # ── Mapa choropleth ───────────────────────────────────
+    # ── Mapa choropleth ───────────────────────────────────────
     centro = [-15.62, -56.09] if mun_sel == 'Todos' else (
         [-15.5989, -56.0949] if mun_sel == 'Cuiabá' else [-15.6461, -56.1324]
     )
@@ -158,10 +163,13 @@ def render_aba_mapa():
                 'fillOpacity': 0.75,
             },
             tooltip=folium.Tooltip(
-                f"<b>{row['NM_BAIRRO']}</b><br>"
-                f"Município: {row['NM_MUN']}<br>"
-                f"Casos previstos SE+{horizonte}: <b>{casos:.2f}</b><br>"
-                f"Classificação: <b style='color:{cor}'>{nivel}</b>",
+                "<b>{}</b><br>"
+                "Município: {}<br>"
+                "Casos previstos SE+{}: <b>{:.2f}</b><br>"
+                "Classificação: <b style='color:{}'>{}</b>".format(
+                    row['NM_BAIRRO'], row['NM_MUN'],
+                    horizonte, casos, cor, nivel
+                ),
                 sticky=True
             ),
             popup=folium.Popup(
@@ -181,20 +189,15 @@ def render_aba_mapa():
         ).add_to(mapa)
 
     # Legenda dinâmica
-    # Usa limiares do município filtrado, ou do primeiro se "Todos"
-    if mun_sel != 'Todos':
-        cd_sel = [k for k, v in MUNICIPIOS.items() if v == mun_sel][0]
-        lim_legenda = {cd_sel: limiares.get(cd_sel, {})}
-    else:
-        lim_legenda = limiares
-
-    legenda_html = _gerar_legenda_html(lim_legenda)
+    legenda_html = _gerar_legenda_html(limiares, mun_sel)
     mapa.get_root().html.add_child(folium.Element(legenda_html))
 
     st_folium(mapa, width=None, height=560, returned_objects=[])
 
-    # ── Tabela top bairros ─────────────────────────────────
-    st.markdown(f"### 📋 Top 10 Bairros — Maior Concentração Prevista (SE+{horizonte})")
+    # ── Tabela top bairros ────────────────────────────────────
+    st.markdown(
+        f"### 📋 Top 10 Bairros — Maior Concentração Prevista (SE+{horizonte})"
+    )
     df_top = (
         gdf_fil[['NM_BAIRRO', 'NM_MUN', col_casos, col_nivel]]
         .sort_values(col_casos, ascending=False)
@@ -208,7 +211,7 @@ def render_aba_mapa():
     )
     st.dataframe(df_top, use_container_width=True, hide_index=True)
 
-    # ── Nota metodológica ─────────────────────────────────
+    # ── Nota metodológica ─────────────────────────────────────
     st.markdown("---")
     st.info(
         "**Metodologia:** Previsão de casos municipais via LightGBM v5 distribuída "

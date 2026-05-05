@@ -74,12 +74,62 @@ Relatório: publicado no HF Hub
 - ADR-023: Integração dbt no pipeline Prefect
 - ADR-024: Transformação log1p/expm1 — par obrigatório
 
+---
+
+## [2.1.0] — 2026-05-04
+
+### Contexto
+Pipeline autônomo validado na nuvem. Dashboard v5 completo com mapa
+IDW dinâmico, UX unificada e deploy em produção.
+
+### Pipeline autônomo (commits 57-58)
+- Bronze completo no HF Hub — 40 arquivos, publicação incremental SHA256
+- `restore_artifacts_hf.py` — script centralizado de restauração
+- `publicacao.py` — manifesto `bronze_manifest_latest.json` rastreável
+- CI/CD validado na nuvem — pipeline semanal completo sem dependência local
+- MODIS timeout resolvido — skip em 0.02s quando Bronze existe
+- Bug parser dbt test PASS/FAIL corrigido via regex
+
+### IDW dinâmico (commits 59-62)
+- `scripts/calibrar_pesos_idw.py` — calibração anual 143 bairros × 191 UBS
+- `scripts/gerar_previsao_bairros.py` — distribuição semanal mass-preserving
+- Scores IDW brutos armazenados (ratio max/min = 1315x)
+- Frações normalizadas por município em runtime
+- Limiares adaptativos percentílicos (P60/P75/P85/P95) por município
+- Limiares embutidos no GeoJSON como metadados (fonte única de verdade)
+- Bug corrigido: codigo_municipio 6 vs 7 dígitos no join UBS/shapefile
+- Bug corrigido: normalização no nível errado (bairro vs município)
+- Bug corrigido: thresholds hardcoded calibrados para pico sazonal
+- `data_fim` dinâmico no dbt — default 2099-12-31, data atual via --vars
+
+### Dashboard v5 (commits 63-65)
+- Mapa choropleth IDW — polígonos 143 bairros com previsão SE+1→SE+4
+- Legenda dinâmica — limiares separados por município quando "Todos"
+- Sidebar unificada — município único controla todas as abas
+- Caption "Aplica-se ao Mapa e Previsão" no slider de horizonte
+- Série temporal filtrada pelo sidebar (seletor interno removido)
+- Previsão filtrada pelo sidebar — mostra 2 gráficos quando "Todos"
+- Tooltip e popup detalhados por bairro (4 horizontes no popup)
+- Top 10 bairros por concentração prevista
+- Nota metodológica com referências (Shepard 1968, Opasnet 2014)
+- Deploy atualizado em dengue-mt-ifmt.streamlit.app
+
+### Documentação
+- ADR-025: Publicação incremental Bronze HF Hub
+- ADR-026: data_fim dinâmico no dbt
+- ADR-027: IDW dinâmico (revisado — bugs commit 62 + limiares adaptativos)
+
+### Infraestrutura
+- Gold atualizado até 2026-04-12 (856 registros)
+- Pipeline semanal CI/CD: domingo 06h Cuiabá
+- Drift operacional: score=0.119 | MAE=6.67 | R²=0.861 | normal
+
 ### Pendências
-- Merge dev → main
-- Dashboard v5 — atualizar com modelo e métricas corretas
-- CI/CD — disparar workflow manual para validar no GitHub Actions
+- Node.js 20 deprecation — atualizar actions no ci.yml antes de junho/2026
+- aba_sobre.py — atualizar métricas e período
 - Google Trends histórico — reconstrução via overlapping windows
-- Mapa IDW dinâmico (ADR-022)
+- Relatório extensionista IFMT
+- Artigo SENIC 2026
 
 ---
 

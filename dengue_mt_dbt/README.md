@@ -97,7 +97,7 @@ Arquivo `macros/cast_date.sql` — padronização de tipos DATE em todo o pipeli
 |---|---|
 | `int_dengue_mt` | Join central InfoDengue (âncora) LEFT JOIN todas as fontes por (municipio_id, data_se) |
 
-Cobertura: 100% em todas as fontes | 416 SE × 2 municípios | 2018-01-07 → 2025-12-28
+Cobertura: 100% em todas as fontes | 428 SE × 2 municípios | 2018-01-07 → 2026-04-12
 
 ### Marts (Gold)
 
@@ -105,7 +105,7 @@ Cobertura: 100% em todas as fontes | 416 SE × 2 municípios | 2018-01-07 → 20
 |---|---|
 | `mart_dengue_features` | Dataset final para ML — 54 features com lags epidemiológicos anti-leakage |
 
-Gold v5: 824 registros (412 SE × 2 municípios) | 2018-02-04 → 2025-12-28
+Gold v5: 856 registros (428 SE × 2 municípios) | 2018-02-04 → 2026-04-12
 
 ---
 
@@ -117,7 +117,7 @@ Definidas em `dbt_project.yml`:
 |---|---|---|
 | `bronze_path` | `profiles.yml` | Caminho absoluto para `data/bronze/` |
 | `data_inicio` | `2018-01-01` | Início do período de treino |
-| `data_fim` | `2025-12-31` | Fim do período de treino |
+| `data_fim` | `2099-12-31` | Dinâmico — data atual passada via `--vars` (ADR-026) |
 | `municipios` | `[5103403, 5108402]` | Códigos IBGE Cuiabá + Várzea Grande |
 
 ---
@@ -153,8 +153,8 @@ dbt compile
 
 ## Resultados dos Testes
 ```
-dbt run  → PASS=9  WARN=0 ERROR=0
-dbt test → PASS=62 WARN=0 ERROR=0
+dbt run  → PASS=8  WARN=0 ERROR=0
+dbt test → PASS=59 WARN=0 ERROR=0
 ```
 
 ---

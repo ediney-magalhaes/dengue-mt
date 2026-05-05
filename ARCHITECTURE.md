@@ -6,21 +6,77 @@
 
 ## Visão Geral
 
-```text
-FONTES PÚBLICAS          INGESTÃO (src/ingestion/)    TRANSFORMAÇÃO        SAÍDA
-─────────────────────────────────────────────────────────────────────────────────
-InfoDengue API      →    infodengue.py            →   dbt staging     →   Silver
-NASA POWER API      →    nasa_power.py            →   dbt intermediate →  Gold v5
-NOAA ONI Index      →    oni.py                   →   dbt marts       →   HF Hub
-Google Trends       →    trends.py                →
-MODIS AppEEARS      →    modis.py                 →
-                                                          ↓
-                                              LightGBM v5 (Prefect)
-                                                          ↓
-                                    ┌─────────────────────┴──────────────────────┐
-                                    ↓                                            ↓
-                            Dashboard Streamlit                          API REST FastAPI
-                         dengue-mt-ifmt.streamlit.app
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryTextColor': '#333', 'lineColor': '#666', 'fontSize': '14px'}}}%%
+flowchart TB
+    subgraph FONTES["🌐 Fontes Públicas"]
+        ID[InfoDengue API]
+        NP[NASA POWER API]
+        ONI[NOAA ONI Index]
+        GT[Google Trends]
+        MD[MODIS AppEEARS]
+    end
+
+    subgraph BRONZE["🥉 Bronze — Ingestão"]
+        B1[infodengue.py]
+        B2[nasa_power.py]
+        B3[oni.py]
+        B4[trends.py]
+        B5[modis.py]
+    end
+
+    subgraph DBT["⚙️ dbt + DuckDB"]
+        STG[Staging — 7 modelos Silver]
+        INT[Intermediate — joins validados]
+        MART[Marts — Gold v5 · 54 features]
+    end
+
+    subgraph ML["🤖 Machine Learning"]
+        LGB[LightGBM v5]
+        DRIFT[Drift Monitor — Wasserstein]
+    end
+
+    subgraph IDW["🗺️ Distribuição Espacial"]
+        PREV[Previsão Municipal SE+1→SE+4]
+        DIST[IDW Mass-Preserving · 143 bairros × 191 UBS]
+        LIM[Limiares Adaptativos P60/P75/P85/P95]
+    end
+
+    subgraph SAIDA["📊 Saída"]
+        DASH[Dashboard Streamlit<br>dengue-mt-ifmt.streamlit.app]
+        TEL[Alerta Telegram]
+        HF[HF Hub — Artefatos]
+    end
+
+    ID --> B1
+    NP --> B2
+    ONI --> B3
+    GT --> B4
+    MD --> B5
+
+    B1 --> STG
+    B2 --> STG
+    B3 --> STG
+    B4 --> STG
+    B5 --> STG
+
+    STG --> INT --> MART
+
+    MART --> LGB
+    LGB --> DRIFT
+    LGB --> PREV
+    PREV --> DIST --> LIM --> DASH
+
+    DRIFT --> TEL
+    MART --> HF
+    LGB --> HF
+
+    style FONTES fill:#e8f4f8,stroke:#2196F3
+    style BRONZE fill:#fff3e0,stroke:#FF9800
+    style DBT fill:#f3e5f5,stroke:#9C27B0
+    style ML fill:#e8f5e9,stroke:#4CAF50
+    style IDW fill:#fce4ec,stroke:#E91E63
+    style SAIDA fill:#e0f2f1,stroke:#009688
 ```
 
 ---
@@ -28,40 +84,57 @@ MODIS AppEEARS      →    modis.py                 →
 ## Fluxo Semanal (domingo 06h Cuiabá — GitHub Actions)
 
 ```text
-1. INGESTÃO (src/ingestion/ — responsabilidade única Bronze)
+1. RESTAURAÇÃO (scripts/restore_artifacts_hf.py)
+   HF Hub ──→ Bronze local (40 arquivos, SHA256 verificado)
+   HF Hub ──→ Gold latest + modelo latest
+
+2. INGESTÃO (src/ingestion/ — responsabilidade única Bronze)
    InfoDengue API  ──→  data/bronze/infodengue/
    NASA POWER API  ──→  data/bronze/nasa_power/
    NOAA ONI        ──→  data/bronze/oni/
    Google Trends   ──→  data/bronze/trends/
-   MODIS AppEEARS  ──→  data/bronze/modis/
+   MODIS AppEEARS  ──→  data/bronze/modis/ (skip se já existe)
 
-2. TRANSFORMAÇÃO (dbt-core + DuckDB)
+3. PUBLICAÇÃO BRONZE (src/tasks/publicacao.py)
+   Bronze local ──→ HF Hub (incremental SHA256, manifesto rastreável)
+
+4. TRANSFORMAÇÃO (dbt-core + DuckDB)
    dbt run → staging → intermediate → marts
-   PASS=9 modelos | PASS=62 testes declarativos
+   dbt test → PASS=59 testes declarativos
+   data_fim passado dinamicamente via --vars (ADR-026)
 
-3. EXPORTAÇÃO
+5. EXPORTAÇÃO
    scripts/exportar_gold.py
    Gold local ──→ HF Hub (snapshot datado + latest)
 
-4. MONITORAMENTO (src/tasks/drift.py)
+6. DISTRIBUIÇÃO ESPACIAL (scripts/gerar_previsao_bairros.py)
+   Previsão municipal ──→ IDW mass-preserving ──→ 143 bairros
+   Limiares adaptativos P60/P75/P85/P95 por município
+   GeoJSON ──→ HF Hub (previsao_bairros_latest.geojson)
+
+7. MONITORAMENTO (src/tasks/drift.py)
    Últimas 26 SE ──→ Wasserstein distance ──→ drift score
    MAE > 25.0 ou R² < 0.75 ──→ retreino
 
-5. RETREINO (src/tasks/retreino.py) — quando necessário
+8. RETREINO (src/tasks/retreino.py) — quando necessário
    Gold v5 ──→ TimeSeriesSplit 5 folds ──→ novo modelo
    pytest testes ──→ promoção ou rollback
 
-6. DASHBOARD
-   app/dashboard.py lê Gold do HF Hub ──→ previsões atualizadas
+9. ALERTA + RELATÓRIO
+   Telegram ──→ status do pipeline
+   Relatório ──→ HF Hub (execucao_latest.md)
+
+10. DASHBOARD
+    dengue-mt-ifmt.streamlit.app lê artefatos do HF Hub
 ```
 
 ---
 
 ## Arquitetura Medalhão
 
-### Bronze — Dados Brutos (Local)
+### Bronze — Dados Brutos (Local + HF Hub)
 
-Cópia fiel e imutável dos dados exatamente como vieram da fonte. Nunca modificado após ingestão. Responsabilidade: `src/ingestion/`.
+Cópia fiel e imutável dos dados exatamente como vieram da fonte. Nunca modificado após ingestão. Publicado incrementalmente no HF Hub com SHA256. Responsabilidade: `src/ingestion/`.
 
 | Fonte | Arquivo Bronze | Período |
 |---|---|---|
@@ -86,8 +159,6 @@ Dados validados, renomeados e com testes declarativos. Responsabilidade: `dengue
 | `stg_trends_historico` | overlapping windows normalizadas | 4 |
 | `stg_modis` | escala ÷10000, cross join SE × município | 8 |
 
-Total staging: PASS=45 WARN=0 ERROR=0
-
 ### Intermediate — Joins entre Fontes (dbt intermediate)
 
 Join central de todas as fontes por `(municipio_id, data_se)`. Responsabilidade: `dengue_mt_dbt/models/intermediate/`.
@@ -96,7 +167,7 @@ Join central de todas as fontes por `(municipio_id, data_se)`. Responsabilidade:
 |---|---|---|---|
 | `int_dengue_mt` | InfoDengue | LEFT JOIN NASA, ONI, Trends histórico, MODIS | 100% todas as fontes |
 
-Resultado: 416 SE × 2 municípios | 2018-01-07 → 2025-12-28
+Resultado: 428 SE × 2 municípios | 2018-01-07 → 2026-04-12
 
 ### Gold — Dataset de Features ML (dbt marts + HF Hub)
 
@@ -118,7 +189,35 @@ Publicado em: `edyestatistica/dengue-mt-medallion` (HF Hub)
 | Trends | `trends_dengue` | lag 1-2 SE |
 | Autoregressivo | `casos_confirmados` | lag 1-4 SE |
 
-Total: 54 features × 824 registros (412 SE × 2 municípios)
+Total: 54 features × 856 registros (428 SE × 2 municípios)
+
+---
+
+## Distribuição Espacial — IDW Dinâmico
+
+Camada de pós-processamento exclusiva do dashboard. Não afeta o modelo.
+
+```text
+LightGBM v5 (previsão municipal)
+       ↓
+IDW Mass-Preserving (Shepard 1968)
+  scores brutos: Σ(casos_historicos / distancia_km²) por bairro
+  frações normalizadas por município em runtime
+       ↓
+143 bairros × 4 horizontes (SE+1→SE+4)
+  Cuiabá: 119 bairros | Várzea Grande: 24 bairros
+       ↓
+Limiares adaptativos (CDC/OPAS 2024)
+  P60 / P75 / P85 / P95 por município
+  recalculados a cada execução semanal
+       ↓
+previsao_bairros_latest.geojson → HF Hub → Dashboard
+```
+
+Propriedade pycnophylactic: Σ casos_bairro = previsão_municipal (conservação de massa).
+
+Scripts: `calibrar_pesos_idw.py` (anual) + `gerar_previsao_bairros.py` (semanal).
+ADRs: [022](reports/adr/022-idw-mapa-risco-bairro-dashboard.md), [027](reports/adr/027-idw-dinamico-previsao-bairros.md).
 
 ---
 
@@ -130,27 +229,15 @@ dengue_mt_dbt/
 │   └── cast_date.sql          ← 4 macros: cast_date, cast_epoch_ms, inicio_se, primeiro_domingo
 ├── models/
 │   ├── staging/               ← Bronze → Silver (7 modelos, materialized=view)
-│   │   ├── infodengue/        stg_infodengue.sql + .yml
-│   │   ├── nasa_power/        stg_nasa_power.sql + .yml
-│   │   ├── oni/               stg_oni.sql + .yml
-│   │   ├── trends/            stg_trends.sql + stg_trends_historico.sql + .yml
-│   │   ├── gee/               stg_gee.sql + .yml
-│   │   └── modis/             stg_modis.sql + .yml
 │   ├── intermediate/          ← Joins entre fontes (1 modelo, materialized=table)
-│   │   └── int_dengue_mt.sql + .yml
 │   └── marts/                 ← Gold final para ML (1 modelo, materialized=table)
-│       └── mart_dengue_features.sql + .yml
 ├── packages.yml               ← dbt_utils 1.3.3
-└── dbt_project.yml            ← vars: bronze_path, data_inicio=2018-01-01, data_fim=2025-12-31
+└── dbt_project.yml            ← vars: bronze_path, data_inicio=2018-01-01, data_fim=2099-12-31
 ```
 
-Comandos:
-
 ```bash
-cd dengue_mt_dbt
-dbt deps         # instala dbt_utils
-dbt run          # executa todos os modelos — PASS=9
-dbt test         # valida qualidade — PASS=62
+dbt run  → PASS=8  WARN=0 ERROR=0
+dbt test → PASS=59 WARN=0 ERROR=0
 ```
 
 ---
@@ -166,7 +253,7 @@ dbt test         # valida qualidade — PASS=62
 | Validação | TimeSeriesSplit 5 folds | Evita data leakage temporal |
 | Drift monitoring | Wasserstein distance | Normalizada por feature, 3 níveis acionáveis |
 | Storage | Hugging Face Hub | Gratuito, ilimitado público |
-| Dashboard | Streamlit Community Cloud | Gratuito, online |
+| Dashboard | Streamlit Community Cloud | Gratuito, online, 5 abas |
 | MLflow | SQLite local | Versionamento formal de experimentos |
 | CI/CD | GitHub Actions | Execução automática domingo 06h Cuiabá |
 
@@ -174,28 +261,16 @@ dbt test         # valida qualidade — PASS=62
 
 ---
 
-## Fontes de Dados
-
-| Fonte | Dados | Período | Granularidade original |
-|---|---|---|---|
-| InfoDengue API | Casos + nowcast + Rt + clima ERA5 | 2018→atual | Semanal (SE) |
-| NASA POWER API | Temperatura, precipitação, radiação, umidade | 2018→atual | Diária → agrega SE |
-| NOAA ONI | El Niño/La Niña | 1950→atual | Trimestral → expande SE |
-| Google Trends | Interesse "dengue" BR-MT | 2018→atual | Semanal |
-| MODIS MOD13A3 | NDVI e EVI 1km | 2018→atual | Mensal → expande SE |
-
----
-
 ## Métricas do Modelo
 
-| Métrica | v5 (Gold v5, 2018-2025) |
+| Métrica | v5 (Gold v5) |
 |---|---|
 | MAE | 9.7 ± 6.2 casos/semana |
-| R² | 0.741 ± 0.081 (TimeSeriesSplit 5 folds) |
+| R² | 0.741 ± 0.081 (TimeSeriesSplit 5-fold) |
+| R² operacional | 0.861 (drift 26 SE) |
+| MAE operacional | 6.67 casos/semana |
 | Features | 54 |
-| Período treino | 2018-2025 |
-
-> **Nota acadêmica:** R²=0.741 ± 0.081 (TimeSeriesSplit 5 folds, Gold v5) é a métrica oficial para publicação. Ver [ADR-006](reports/adr/006-metrica-oficial-timeseriessplit.md) para justificativa da escolha metodológica.
+| Período treino | 2018–2026 |
 
 ---
 
@@ -211,37 +286,14 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 
 ---
 
-## Reprodutibilidade
-
-```bash
-git clone https://github.com/ediney-magalhaes/dengue-mt.git
-cd dengue-mt
-conda create -n dengue-mt python=3.11 -y
-conda activate dengue-mt
-pip install -r requirements.txt
-
-# Executar pipeline dbt completo
-cd dengue_mt_dbt
-dbt deps && dbt run && dbt test
-
-# Exportar Gold para HF Hub
-cd ..
-python scripts/exportar_gold.py
-
-# Rodar dashboard
-streamlit run app/dashboard.py
-```
-
----
-
 ## Roadmap
 
 | Versão | Data | Status | Entregas |
 |---|---|---|---|
-| v1.0–v1.4 | Mar-Abr/2026 | Concluído | Pipeline completo, dashboard, CI/CD, MLflow |
-| v2.0-dev | Abr/2026 | Em desenvolvimento | dbt + DuckDB, MODIS, Trends histórico, Gold v5 |
-| v2.0 | Mai/2026 | Planejado | LightGBM v5, pipeline Prefect atualizado, merge main |
-| v2.1 | Jul/2026 | Planejado | Relatório extensionista IFMT, artigo SENIC 2026 |
+| v0.1–v1.4 | Mar-Abr/2026 | ✅ Concluído | Pipeline completo, dashboard, CI/CD, MLflow |
+| v2.0 | Abr/2026 | ✅ Concluído | dbt + DuckDB, MODIS, Gold v5, LightGBM v5 |
+| v2.1 | Mai/2026 | ✅ Concluído | IDW dinâmico, dashboard v5, deploy produção |
+| v2.2 | Jun/2026 | Planejado | Relatório extensionista IFMT, artigo SENIC 2026 |
 
 ---
 

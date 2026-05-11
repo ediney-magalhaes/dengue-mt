@@ -192,7 +192,7 @@ def plot_incidencia_100k(df):
     Incidência por 100 mil habitantes — normaliza pela população.
     Permite comparação justa entre Cuiabá (~620k) e Várzea Grande (~290k).
     """
-    fig, axes = plt.subplots(2, 1, figsize=(14, 7), sharex=True)
+    fig, axes = plt.subplots(2, 1, figsize=(14, 7))
 
     # ── Série temporal de incidência ──
     ax = axes[0]
@@ -209,6 +209,8 @@ def plot_incidencia_100k(df):
     ax.set_title('Incidência Semanal por 100 mil Habitantes',
                  fontweight='bold', loc='left')
     ax.legend(loc='upper right')
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
 
     # ── Acumulado anual por 100k ──
     ax = axes[1]
@@ -226,7 +228,7 @@ def plot_incidencia_100k(df):
             ax.annotate(f'{val:.0f}', xy=(ano, val),
                         xytext=(0, 8), textcoords='offset points',
                         ha='center', fontsize=7, color=cor, fontweight='bold')
-
+    ax.set_xticks(list(range(df_plot['ano'].min(), df_plot['ano'].max() + 1)))
     ax.set_ylabel('Incidência acumulada\n(por 100 mil hab./ano)')
     ax.set_xlabel('Ano')
     ax.set_title('Incidência Acumulada Anual', fontweight='bold', loc='left')

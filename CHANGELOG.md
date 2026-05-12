@@ -28,6 +28,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.2.1] — 2026-05-11
+
+### Adicionado
+- **EDA completa Gold v5** — 7 scripts em `notebooks/eda/`, 17 figuras em `reports/eda/`
+  - Estatísticas descritivas, Shapiro-Wilk, missing values
+  - Séries temporais + decomposição STL (sazonalidade Cuiabá 52.9% vs VG 10.2%)
+  - Perfil sazonal, distribuição, boxplot anual
+  - Correlações, CCF, multicolinearidade (22 pares |r|>0.90)
+  - Análise multivariada — séries temporais clima × casos
+  - PCA — 4 componentes = 70.1% variância (água, temperatura, ENSO, inércia)
+  - Vigilância — Rt, nowcasting, incidência 100k, sincronicidade municípios
+- **Backtesting expanding window** — `notebooks/backtesting/`, 3 figuras + 2 CSVs
+  - Estratégia recursiva vs direta, horizontes h=1,2,3,4
+  - Baselines: naïve e média móvel 4 SE
+  - Métricas: MAE, RMSE, R², MASE por horizonte e período
+  - ADR-028: decisão documentada
+- **Dicionário de dados atualizado** — Gold v5, 54 colunas, movido para `docs/`
+
+### Corrigido
+- Bug no gráfico de incidência 100k (eixo X com datas erradas por `sharex=True`)
+- `__pycache__` removido do tracking e adicionado ao `.gitignore`
+
+### Descobertas (EDA)
+- Incidência VG 2025: 1.222/100k (4x Cuiabá) — surto real confirmado
+- Sincronicidade lag=0 (r=0.79) — surtos simultâneos entre municípios
+- Google Trends é contemporâneo (r=0.71 lag 0), não preditivo
+- Backtesting MASE=0.59 em h=4 — modelo erra 41% menos que baseline naïve
+- Estratégia recursiva supera direta em todos os horizontes
+
+---
+
 ## [2.0.0-dev] — 2026-04-26 (continuação)
 
 ### Contexto

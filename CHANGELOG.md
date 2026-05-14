@@ -28,6 +28,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.3.0] — 2026-05-13
+
+### Adicionado
+- **Intervalos de predição CQR** (Conformalized Quantile Regression)
+  - Romano, Patterson & Candès (NeurIPS 2019) implementado sobre LightGBM v5
+  - CQR 90%: cobertura empírica 91.5%, largura média adaptativa 129 casos
+  - CQR 80%: cobertura empírica 69.8%, largura média 63.7 casos
+  - Comparação com baseline fixo (bootstrap resíduos) — CQR superior
+  - 6 figuras: série com bandas, cobertura por trimestre, largura adaptativa
+  - Dependência: `mapie==1.4.0`
+- **Análise SHAP atualizada** (Lundberg & Lee, NeurIPS 2017)
+  - TreeExplainer sobre 428 semanas × 46 features
+  - Top 2: Casos MM4 (|SHAP|=0.671) e Casos lag1 (|SHAP|=0.222)
+  - Dependence plots revelam threshold ~100 casos e faixa térmica 24-28°C
+  - SHAP temporal por fase epidêmica (original — pré-surto, surto, entressafra)
+  - 4 figuras + CSV de importâncias
+- `.gitignore` limpo — duplicatas e artefatos removidos
+
+### Referências adicionadas
+- Romano et al. (NeurIPS 2019) — Conformalized Quantile Regression
+- Cordier et al. (COPA/PMLR 2023) — MAPIE library
+- Rahman et al. (Health Sci Rep 2025) — SHAP + LightGBM dengue Bangladesh
+- PMC 2025 — Conformal prediction para dengue no Brasil
+
+---
+
 ## [2.2.1] — 2026-05-11
 
 ### Adicionado

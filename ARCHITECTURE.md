@@ -256,6 +256,8 @@ dbt test → PASS=59 WARN=0 ERROR=0
 | Dashboard | Streamlit Community Cloud | Gratuito, online, 5 abas |
 | MLflow | SQLite local | Versionamento formal de experimentos |
 | CI/CD | GitHub Actions | Execução automática domingo 06h Cuiabá |
+| Intervalos | MAPIE 1.4 (CQR) | Conformal prediction, distribution-free |
+| Interpretabilidade | SHAP 0.51 (TreeExplainer) | Importância por feature, dependence plots |
 
 > **Custo total de infraestrutura: R$ 0,00**
 
@@ -263,14 +265,34 @@ dbt test → PASS=59 WARN=0 ERROR=0
 
 ## Métricas do Modelo
 
-| Métrica | v5 (Gold v5) |
+### Previsão pontual (LightGBM v5)
+
+| Métrica | Valor |
 |---|---|
-| MAE | 9.7 ± 6.2 casos/semana |
+| MAE | 9.7 ± 6.2 casos/semana (TimeSeriesSplit 5-fold) |
 | R² | 0.741 ± 0.081 (TimeSeriesSplit 5-fold) |
 | R² operacional | 0.861 (drift 26 SE) |
 | MAE operacional | 6.67 casos/semana |
 | Features | 54 |
 | Período treino | 2018–2026 |
+
+### Intervalos de predição (CQR — Romano et al., NeurIPS 2019)
+
+| Método | Cobertura | Largura média |
+|---|---|---|
+| CQR 90% | 91.5% ✅ | 129.0 casos |
+| CQR 80% | 69.8% | 63.7 casos |
+| Baseline fixo 90% | 71.3% | 88.2 casos |
+
+### Interpretabilidade (SHAP — Lundberg & Lee, 2017)
+
+| Feature | |SHAP| médio | Grupo |
+|---|---|---|
+| Casos MM4 | 0.671 | Epidemiológico |
+| Casos lag 1 SE | 0.222 | Epidemiológico |
+| temp_media_mm8 | 0.043 | Climático |
+| Casos lag 2 SE | 0.039 | Epidemiológico |
+| temp_media_mm4 | 0.030 | Climático |
 
 ---
 
@@ -290,10 +312,12 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 
 | Versão | Data | Status | Entregas |
 |---|---|---|---|
-| v0.1–v1.4 | Mar-Abr/2026 | ✅ Concluído | Pipeline completo, dashboard, CI/CD, MLflow |
-| v2.0 | Abr/2026 | ✅ Concluído | dbt + DuckDB, MODIS, Gold v5, LightGBM v5 |
-| v2.1 | Mai/2026 | ✅ Concluído | IDW dinâmico, dashboard v5, deploy produção |
-| v2.2 | Jun/2026 | Planejado | Relatório extensionista IFMT, artigo SENIC 2026 |
+| v0.1–v1.4 | Mar-Abr/2026 | ✅ | Pipeline completo, dashboard, CI/CD, MLflow |
+| v2.0 | Abr/2026 | ✅ | dbt + DuckDB, MODIS, Gold v5, LightGBM v5 |
+| v2.1 | Mai/2026 | ✅ | IDW dinâmico, dashboard v5, deploy produção |
+| v2.2 | Mai/2026 | ✅ | EDA Gold v5 (17 figuras), backtesting expanding window, baselines |
+| v2.3 | Mai/2026 | ✅ | Intervalos CQR (Romano et al. 2019), SHAP atualizado (4 figuras) |
+| v3.0 | Jun/2026 | 📋 | Artigo SENIC 2026, relatório extensionista IFMT |
 
 ---
 

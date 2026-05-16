@@ -196,19 +196,20 @@ def plot_bar_top20(df_importance, feature_cols):
 
     fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Colorir por grupo
+    # Colorir por grupo — ORDEM IMPORTA: categorias específicas primeiro
     cores = []
     for feat in top20["feature"]:
-        if "casos" in feat or "lag" in feat or "mm" in feat:
-            cores.append("#E53935")   # Epidemiológico = vermelho
-        elif any(k in feat for k in ["temp", "umidade", "precip", "radiacao", "amplitude"]):
-            cores.append("#1E88E5")   # Climático = azul
-        elif any(k in feat for k in ["ndvi", "ndwi"]):
+        if any(k in feat for k in ["ndvi", "ndwi", "evi"]):
             cores.append("#43A047")   # Vegetação = verde
-        elif "oni" in feat:
+        elif any(k in feat for k in ["oni", "fase_enso"]):
             cores.append("#FB8C00")   # ENSO = laranja
         elif "trends" in feat:
             cores.append("#8E24AA")   # Infoveillance = roxo
+        elif any(k in feat for k in ["temp", "umidade", "precip", "radiacao"]):
+            cores.append("#1E88E5")   # Climático = azul
+        elif any(k in feat for k in ["casos", "rt_index", "prob_rt", "nivel_alerta",
+                                      "receptivo", "transmissao", "notif_acum", "populacao"]):
+            cores.append("#E53935")   # Epidemiológico = vermelho
         else:
             cores.append("#757575")   # Outros = cinza
 

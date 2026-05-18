@@ -26,6 +26,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Fontes com fallback: [lista ou "nenhuma"]
 ```
 
+
+---
+
+## [2.4.0] — 2026-05-17 (planejado)
+
+### Planejado — Direct Multi-Step Forecasting + CQR em Produção
+- **Migração para Direct Multi-Step Forecasting** (ADR-030)
+  - 12 modelos independentes: 4 horizontes (SE+1→SE+4) × 3 quantis (q05, q50, q95)
+  - Elimina bug de previsão estática (mesmo valor para todos os horizontes)
+  - Elimina congelamento de features exógenas na inferência multi-horizonte
+  - Referências: Taieb & Hyndman (2014), skforecast ForecasterAutoregDirect
+- **Bandas CQR no dashboard** — aba Previsão com intervalo de 90%
+  - Incerteza cresce com horizonte (comportamento correto)
+  - Referências: Romano et al. (NeurIPS 2019), Wang & Hyndman (arXiv 2026)
+- **Novo módulo**: `src/tasks/treinar_direto_cqr.py`
+- **Novo artefato HF Hub**: 12 `.pkl` + `direct_cqr_metadata.json`
+
+### Corrigido
+- `aba_sobre.py` v2.1 — período atualizado 2018→2026, capacidades CQR/SHAP/backtesting, menção CBIS'26 (commit 80)
+
 ---
 
 ## [2.3.0] — 2026-05-13

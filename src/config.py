@@ -60,6 +60,29 @@ MODEL_LATEST_PATH  = MODELS_DIR / 'lgbm_producao_latest.pkl'
 SCHEMA_LATEST_PATH = MODELS_DIR / 'lgbm_feature_schema_latest.json'
 GOLD_LATEST_PATH   = DATA_DIR  / 'gold' / 'dataset_features_latest.parquet'
 
+# ============================================================
+# DIRECT MULTI-STEP + CQR (ADR-030)
+# ============================================================
+HORIZONTES_DIRECT = [1, 2, 4, 8]      # semanas epidemiológicas
+QUANTIS_CQR       = [0.01, 0.50, 0.99] # banda 90% calibrada: inferior, mediana, superior
+
+# Paths locais — 12 modelos (4 horizontes × 3 quantis)
+# Padrão: lgbm_h{horizonte}_q{quantil}_latest.pkl
+def model_direct_path(h: int, q: float) -> Path:
+    """Retorna path do modelo Direct CQR para dado horizonte e quantil."""
+    q_str = str(int(q * 100)).zfill(2)  # 0.05 → '05', 0.50 → '50'
+    return MODELS_DIR / f'lgbm_h{h}_q{q_str}_latest.pkl'
+
+DIRECT_METADATA_PATH = MODELS_DIR / 'direct_cqr_metadata.json'
+
+# Paths HF Hub — espelham a estrutura local
+def hf_model_direct_path(h: int, q: float) -> str:
+    """Retorna path HF Hub do modelo Direct CQR."""
+    q_str = str(int(q * 100)).zfill(2)
+    return f'models/lgbm_h{h}_q{q_str}_latest.pkl'
+
+HF_DIRECT_METADATA = 'models/direct_cqr_metadata.json'
+
 # Nomes para upload no HF Hub
 HF_MODEL_LATEST  = 'models/lgbm_producao_latest.pkl'
 HF_SCHEMA_LATEST = 'models/lgbm_feature_schema_latest.json'

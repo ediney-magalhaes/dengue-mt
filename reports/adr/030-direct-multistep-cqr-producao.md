@@ -1,7 +1,7 @@
 # ADR-030: Migração para Direct Multi-Step Forecasting com CQR em Produção
 
 ## Status
-Aceito — 2026-05-17
+Implementado — 2026-05-18
 
 ## Contexto
 O sistema de previsão em produção (dashboard + pipeline semanal) apresenta
@@ -94,18 +94,18 @@ treinando 12 modelos independentes: 4 horizontes × 3 quantis (q05, q50, q95).
 ### Nomenclatura dos modelos no HF Hub
 
 ```
-models/lgbm_h1_q50_latest.pkl    # mediana, horizonte 1 (≈ modelo atual)
-models/lgbm_h1_q05_latest.pkl    # lower 90%, horizonte 1
-models/lgbm_h1_q95_latest.pkl    # upper 90%, horizonte 1
-models/lgbm_h2_q50_latest.pkl    # mediana, horizonte 2
-models/lgbm_h2_q05_latest.pkl    # lower 90%, horizonte 2
-models/lgbm_h2_q95_latest.pkl    # upper 90%, horizonte 2
-models/lgbm_h3_q50_latest.pkl    # mediana, horizonte 3
-models/lgbm_h3_q05_latest.pkl    # lower 90%, horizonte 3
-models/lgbm_h3_q95_latest.pkl    # upper 90%, horizonte 3
-models/lgbm_h4_q50_latest.pkl    # mediana, horizonte 4
-models/lgbm_h4_q05_latest.pkl    # lower 90%, horizonte 4
-models/lgbm_h4_q95_latest.pkl    # upper 90%, horizonte 4
+models/lgbm_h1_q50_latest.pkl    # mediana, horizonte 1 SE (≈ modelo v5 atual)
+models/lgbm_h1_q01_latest.pkl    # lower bound, horizonte 1 SE
+models/lgbm_h1_q99_latest.pkl    # upper bound, horizonte 1 SE
+models/lgbm_h2_q50_latest.pkl    # mediana, horizonte 2 SE
+models/lgbm_h2_q01_latest.pkl    # lower bound, horizonte 2 SE
+models/lgbm_h2_q99_latest.pkl    # upper bound, horizonte 2 SE
+models/lgbm_h4_q50_latest.pkl    # mediana, horizonte 4 SE
+models/lgbm_h4_q01_latest.pkl    # lower bound, horizonte 4 SE
+models/lgbm_h4_q99_latest.pkl    # upper bound, horizonte 4 SE
+models/lgbm_h8_q50_latest.pkl    # mediana, horizonte 8 SE
+models/lgbm_h8_q01_latest.pkl    # lower bound, horizonte 8 SE
+models/lgbm_h8_q99_latest.pkl    # upper bound, horizonte 8 SE
 models/direct_cqr_metadata.json  # calibração conformal + métricas
 ```
 
@@ -160,10 +160,25 @@ exclusiva do módulo de treino.
 - Amat Rodrigo, J., Escobar Ortiz, J. (2024). skforecast: time series
   forecasting with scikit-learn regressors. ForecasterAutoregDirect.
 
-## Artefatos (planejados)
+## Artefatos (implementados — commit 82)
+- `src/config.py` — paths Direct CQR, HORIZONTES_DIRECT, QUANTIS_CQR
 - `src/tasks/treinar_direto_cqr.py` — módulo de treino dos 12 modelos
-- `src/features/build_features.py` — função `criar_targets_direct()`
-- `models/lgbm_h{1-4}_q{05,50,95}_latest.pkl` — 12 modelos
-- `models/direct_cqr_metadata.json` — calibração + métricas
-- `app/components/aba_previsao.py` — gráfico com bandas CQR
+- `models/lgbm_h{1,2,4,8}_q{01,50,99}_latest.pkl` — 12 modelos
+- `models/direct_cqr_metadata.json` — calibração conformal + métricas
 - `reports/adr/030-direct-multistep-cqr-producao.md` — este documento
+- `reports/adr/031-calibracao-conformal-bandas.md` — ADR calibração
+
+### Métricas de validação (expanding window)
+| Horizonte | R² | MAE | Cobertura calibrada |
+|---|---|---|---|
+| h=1 | 0.589 | 13.8 | 90.1% |
+| h=2 | 0.525 | 14.9 | 90.1% |
+| h=4 | 0.509 | 15.9 | 90.0% |
+| h=8 | 0.435 | 16.7 | 89.9% |
+
+### Decisões de implementação vs planejado
+- Horizontes: h=1,2,3,4 planejado → h=1,2,4,8 implementado (alinhado com backtesting)
+- Quantis: q05/q95 planejado → q01/q99 implementado (cobertura insuficiente com 0.05/0.95)
+- Calibração conformal integrada no módulo de treino (ADR-031)
+- `build_features.py` não alterado — targets criados dentro do `treinar_direto_cqr.py`
+- Validação: expanding window em vez de TimeSeriesSplit (conforme literatura)

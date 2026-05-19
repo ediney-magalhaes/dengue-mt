@@ -29,11 +29,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [2.4.0] — 2026-05-17 (planejado)
+## [2.4.0] — 2026-05-18 (em implementação)
 
-### Planejado — Direct Multi-Step Forecasting + CQR em Produção
+### Implementado — Direct Multi-Step Forecasting + CQR
 - **Migração para Direct Multi-Step Forecasting** (ADR-030)
-  - 12 modelos independentes: 4 horizontes (SE+1→SE+4) × 3 quantis (q05, q50, q95)
+  - 12 modelos independentes: 4 horizontes (SE+1, +2, +4, +8) × 3 quantis (q01, q50, q99)
   - Elimina bug de previsão estática (mesmo valor para todos os horizontes)
   - Elimina congelamento de features exógenas na inferência multi-horizonte
   - Referências: Taieb & Hyndman (2014), skforecast ForecasterAutoregDirect
@@ -45,6 +45,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Corrigido
 - `aba_sobre.py` v2.1 — período atualizado 2018→2026, capacidades CQR/SHAP/backtesting, menção CBIS'26 (commit 80)
+- Bug `shift(-h)` sem `groupby('municipio_id')` contaminava targets entre municípios
+
+### Métricas (expanding window)
+| Horizonte | R² | MAE | Cobertura calibrada |
+|---|---|---|---|
+| h=1 | 0.589 | 13.8 | 90.1% |
+| h=2 | 0.525 | 14.9 | 90.1% |
+| h=4 | 0.509 | 15.9 | 90.0% |
+| h=8 | 0.435 | 16.7 | 89.9% |
+
+### Documentação
+- ADR-030 atualizado — status Implementado, métricas reais, artefatos
+- ADR-031 — Calibração conformal das bandas (Romano et al., NeurIPS 2019)
+
+### Pendente (próximas sessões)
+- `scripts/gerar_previsao_bairros.py` — consumir modelo por horizonte
+- `app/components/dados.py` + `aba_previsao.py` — bandas CQR no dashboard
+- `src/pipeline_prefect.py` + `publicacao.py` — orquestração e HF Hub
+- Testes pytest
 
 ---
 

@@ -191,10 +191,31 @@ def publicar_gold_versionado():
     try:
         from huggingface_hub import HfApi
 
+        # Exportar Gold do DuckDB para Parquet (fonte de verdade é o dbt)
+        import duckdb
+        from src.config import ROOT_DIR
+
+        duckdb_path = ROOT_DIR / 'dengue_mt_dbt' / 'dev.duckdb'
         gold_path = GOLD_LATEST_PATH
-        if not gold_path.exists():
-            logger.warning("Gold não encontrado — pulando publicação")
-            return {'status': 'pendente'}
+        gold_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if duckdb_path.exists():
+            conn = duckdb.connect(str(duckdb_path), read_only=True)
+            try:
+                df_gold = conn.execute('SELECT * FROM main_marts.mart_dengue_features').df()
+                conn.close()
+                df_gold.to_parquet(gold_path, index=False)
+                logger.info(f"Gold exportado do DuckDB: {len(df_gold)} registros, "
+                           f"até {df_gold['data_se'].max()}")
+            except Exception as e:
+                conn.close()
+                logger.warning(f"Falha ao exportar do DuckDB: {e} — usando parquet existente")
+                if not gold_path.exists():
+                    return {'status': 'pendente', 'motivo': str(e)}
+        else:
+            if not gold_path.exists():
+                logger.warning("Gold não encontrado — pulando publicação")
+                return {'status': 'pendente'}
 
         api  = HfApi()
         hoje = date.today().isoformat()

@@ -64,7 +64,7 @@ GOLD_LATEST_PATH   = DATA_DIR  / 'gold' / 'dataset_features_latest.parquet'
 # DIRECT MULTI-STEP + CQR (ADR-030)
 # ============================================================
 HORIZONTES_DIRECT = [1, 2, 4, 8]      # semanas epidemiológicas
-QUANTIS_CQR       = [0.01, 0.50, 0.99] # banda 90% calibrada: inferior, mediana, superior
+QUANTIS_CQR       = [0.05, 0.50, 0.95] # banda 90% calibrada: inferior, mediana, superior
 
 # Paths locais — 12 modelos (4 horizontes × 3 quantis)
 # Padrão: lgbm_h{horizonte}_q{quantil}_latest.pkl

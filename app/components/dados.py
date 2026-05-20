@@ -16,6 +16,8 @@ HF_DATASET = "edyestatistica/dengue-mt-medallion"
 
 HF_GOLD_LATEST  = 'gold/dataset_features_latest.parquet'
 HF_MODEL_LATEST = 'models/lgbm_producao_latest.pkl'
+HF_DIRECT_METADATA = 'models/direct_cqr_metadata.json'
+HORIZONTES_DIRECT  = [1, 2, 4, 8]
 
 
 @st.cache_data(ttl=300)
@@ -86,20 +88,61 @@ def carregar_modelo_hf():
     except Exception:
         return None
 
-
-def fazer_previsao_local(modelo, df_gold, semanas=4):
+@st.cache_resource
+def carregar_modelos_direct_hf():
     """
-    Previsão local por município — SE+1 a SE+4.
-    Classificação de risco usa percentis da série histórica
-    do Gold — sem limiares hardcoded.
+    Carrega 12 modelos Direct CQR + metadata do HF Hub.
+    Retorna: (modelos_dict, metadata_dict) ou (None, None)
+    """
+    try:
+        from huggingface_hub import hf_hub_download
+        import joblib
+        import json
+
+        path_meta = hf_hub_download(
+            repo_id=HF_DATASET,
+            filename=HF_DIRECT_METADATA,
+            repo_type='dataset'
+        )
+        with open(path_meta, encoding='utf-8') as f:
+            metadata = json.load(f)
+
+        quantis = metadata['quantis']
+        modelos = {}
+        for h in HORIZONTES_DIRECT:
+            for q in quantis:
+                q_str = str(int(q * 100)).zfill(2)
+                path = hf_hub_download(
+                    repo_id=HF_DATASET,
+                    filename=f'models/lgbm_h{h}_q{q_str}_latest.pkl',
+                    repo_type='dataset'
+                )
+                modelos[(h, q_str)] = joblib.load(path)
+
+        return modelos, metadata
+    except Exception:
+        return None, None
+
+
+def fazer_previsao_local(modelo, df_gold, semanas=4,
+                         modelos_direct=None, metadata_direct=None):
+    """
+    Previsão local por município.
+    Com Direct CQR: modelo por horizonte + bandas calibradas.
+    Sem Direct CQR: fallback modelo pontual único.
     """
     try:
         df = df_gold.copy()
         df['data_se'] = pd.to_datetime(df['data_se'])
         df = df.sort_values('data_se')
-        feature_cols = [c for c in modelo.feature_name_ if c in df.columns]
 
-        # Calcula limiares municipais a partir do histórico
+        if modelos_direct:
+            modelo_ref = modelos_direct[(HORIZONTES_DIRECT[0], '50')]
+        else:
+            modelo_ref = modelo
+
+        feature_cols = [c for c in modelo_ref.feature_name_ if c in df.columns]
+
         col_casos = [c for c in df.columns if 'caso' in c.lower()][0]
         limiares_mun = {}
         for mun_id in df['municipio_id'].unique():
@@ -125,28 +168,65 @@ def fazer_previsao_local(modelo, df_gold, semanas=4):
                 return 'Baixo'
             return 'Muito Baixo'
 
+        if modelos_direct:
+            horizontes = HORIZONTES_DIRECT
+            q_lo_str = str(int(metadata_direct['quantis'][0] * 100)).zfill(2)
+            q_hi_str = str(int(metadata_direct['quantis'][2] * 100)).zfill(2)
+        else:
+            horizontes = list(range(1, semanas + 1))
+
         previsoes = []
         for mun_id in df['municipio_id'].unique():
             df_mun = df[df['municipio_id'] == mun_id]
             ultima_linha = df_mun[feature_cols].iloc[[-1]]
-            ultima_data  = df_mun['data_se'].max()
+            ultima_data = df_mun['data_se'].max()
 
-            for i in range(1, semanas + 1):
-                data_prev  = ultima_data + timedelta(weeks=i)
-                casos_pred = max(float(np.expm1(modelo.predict(ultima_linha)[0])), 0)
-                previsoes.append({
+            for h in horizontes:
+                data_prev = ultima_data + timedelta(weeks=h)
+
+                if modelos_direct and (h, '50') in modelos_direct:
+                    pred_q50 = max(float(np.expm1(
+                        modelos_direct[(h, '50')].predict(ultima_linha)[0]
+                    )), 0)
+                    pred_lo = max(float(np.expm1(
+                        modelos_direct[(h, q_lo_str)].predict(ultima_linha)[0]
+                    )), 0)
+                    pred_hi = max(float(np.expm1(
+                        modelos_direct[(h, q_hi_str)].predict(ultima_linha)[0]
+                    )), 0)
+
+                    cal = metadata_direct['modelos'].get(f'h{h}_calibracao', {})
+                    q_conf = cal.get('q_conformal', 0.0)
+
+                    lower = max(pred_lo - q_conf, 0)
+                    upper = max(pred_hi + q_conf, pred_q50)
+                    casos_pred = pred_q50
+                else:
+                    casos_pred = max(float(np.expm1(
+                        modelo.predict(ultima_linha)[0]
+                    )), 0)
+                    lower = None
+                    upper = None
+
+                prev = {
                     'data_se':         data_prev.strftime('%Y-%m-%d'),
                     'municipio_id':    int(mun_id),
                     'casos_previstos': round(casos_pred, 1),
-                    'horizonte_se':    i,
+                    'horizonte_se':    h,
                     'nivel_risco':     _classificar(casos_pred, mun_id),
-                })
+                }
+                if lower is not None:
+                    prev['lower'] = round(lower, 1)
+                    prev['upper'] = round(upper, 1)
+
+                previsoes.append(prev)
 
         return {
-            'modelo':                'LightGBM v5',
+            'modelo':                'Direct CQR v1' if modelos_direct else 'LightGBM v5',
             'gerado_em':             datetime.now().isoformat(),
             'ultima_data_conhecida': str(df['data_se'].max().date()),
-            'horizonte_semanas':     semanas,
+            'horizonte_semanas':     len(horizontes),
+            'tem_bandas':            modelos_direct is not None,
             'previsoes':             previsoes
         }
     except Exception:

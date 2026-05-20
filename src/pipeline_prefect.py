@@ -39,6 +39,7 @@ from src.tasks.dbt_runner  import executar_dbt_run, executar_dbt_test
 from src.tasks.drift       import monitorar_drift_modelo
 from src.tasks.retreino    import retreinar_modelo
 from src.tasks.publicacao  import publicar_bronze_incremental, publicar_gold_versionado, publicar_previsao_bairros
+from src.tasks.treinar_direto_cqr import treinar_direto_cqr
 from src.tasks.relatorio   import gerar_relatorio_execucao
 from src.tasks.alertas     import (
     alerta_pipeline_ok, alerta_pipeline_falhou,
@@ -150,6 +151,14 @@ def pipeline_semanal():
     t0 = time.time()
     publicacao_gold = publicar_gold_versionado()
     log_etapa('publicar_gold', t0, publicacao_gold)
+
+    # ── Treino Direct CQR (12 modelos: 4 horizontes × 3 quantis) ──
+    t0 = time.time()
+    resultado_direct = treinar_direto_cqr(data_corte=data_corte)
+    log_etapa('treinar_direto_cqr', t0, resultado_direct)
+    logger.info(
+        f"Direct CQR: {resultado_direct.get('n_modelos', 0)} modelos treinados"
+      )
 
     t0 = time.time()
     publicacao_bairros = publicar_previsao_bairros()

@@ -26,6 +26,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Fontes com fallback: [lista ou "nenhuma"]
 ```
 
+---
+
+## [2.4.1] — 2026-05-20
+
+### Corrigido
+- **Filtro de horizonte** — `select_slider` com opções [1, 2, 4, 8] substituindo slider linear 1–4; filtro `horizonte_se <= semanas` na aba Previsão (commit 86)
+- Texto metodológico do mapa atualizado para "LightGBM Direct Multi-Step (CQR 90%)"
+
+### Adicionado
+- **Treino Direct CQR no pipeline** — `treinar_direto_cqr` integrado na Etapa 3 do `pipeline_prefect.py`, entre Gold e previsão por bairros (commit 87)
+- **11 testes pytest Direct CQR** — cobertura: artefatos, metadata, targets log1p, expm1 (ADR-024), bandas ordenadas, features consistentes, R² mínimo por horizonte (commit 88)
+- Suíte completa: 21/21 passed (10 pipeline + 11 Direct CQR)
+- Tolerância quantile crossing h=8 documentada (Koenker 2005)
+
+### Documentação
+- ADR-033 — Testes automatizados Direct CQR
+
+### Pendente (próximas sessões)
+- Validar CI de domingo 25/05 — Gold deve avançar além de 12/04
+- Relatório extensionista IFMT
+- Artigo SENIC 2026
 
 ---
 
@@ -68,10 +89,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - `src/tasks/publicacao.py` — exportação DuckDB → parquet antes de publicar
 
 ### Pendente (próximas sessões)
-- Filtro de horizonte na aba Previsão (slider não respeitado)
-- `src/pipeline_prefect.py` — integrar `treinar_direto_cqr` no fluxo semanal
-- Testes pytest para modelos Direct CQR
-- Merge dev→main validado com CI/CD
+- Filtro de horizonte na aba Previsão (slider não respeitado) - FEITO
+- `src/pipeline_prefect.py` — integrar `treinar_direto_cqr` no fluxo semanal - FEITO
+- Testes pytest para modelos Direct CQR - FEITO
+- Merge dev→main validado com CI/CD - FEITO
 
 ---
 

@@ -107,6 +107,11 @@ flowchart TB
    DuckDB (mart_dengue_features) ──→ data/gold/*.parquet
    Gold local ──→ HF Hub (snapshot datado + latest)
 
+5b. TREINO DIRECT CQR (src/tasks/treinar_direto_cqr.py)
+    Gold v5 ──→ 12 modelos (4 horizontes × 3 quantis q05/q50/q95)
+    Calibração conformal ──→ cobertura ~90% garantida
+    Modelos salvos em models/ + metadata JSON
+
 6. DISTRIBUIÇÃO ESPACIAL (scripts/gerar_previsao_bairros.py)
    Previsão municipal ──→ IDW mass-preserving ──→ 143 bairros
    Limiares adaptativos P60/P75/P85/P95 por município
@@ -118,7 +123,7 @@ flowchart TB
 
 8. RETREINO (src/tasks/retreino.py) — quando necessário
    Gold v5 ──→ TimeSeriesSplit 5 folds ──→ novo modelo
-   pytest testes ──→ promoção ou rollback
+   pytest 21 testes (10 pipeline + 11 Direct CQR) ──→ promoção ou rollback
 
 9. ALERTA + RELATÓRIO
    Telegram ──→ status do pipeline

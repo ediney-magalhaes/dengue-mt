@@ -29,11 +29,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [2.4.0] — 2026-05-18 (em implementação)
+## [2.4.0] — 2026-05-19
 
 ### Implementado — Direct Multi-Step Forecasting + CQR
 - **Migração para Direct Multi-Step Forecasting** (ADR-030)
-  - 12 modelos independentes: 4 horizontes (SE+1, +2, +4, +8) × 3 quantis (q01, q50, q99)
+  - 12 modelos independentes: 4 horizontes (SE+1, +2, +4, +8) × 3 quantis (q05, q50, q95)
   - Elimina bug de previsão estática (mesmo valor para todos os horizontes)
   - Elimina congelamento de features exógenas na inferência multi-horizonte
   - Referências: Taieb & Hyndman (2014), skforecast ForecasterAutoregDirect
@@ -46,6 +46,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 ### Corrigido
 - `aba_sobre.py` v2.1 — período atualizado 2018→2026, capacidades CQR/SHAP/backtesting, menção CBIS'26 (commit 80)
 - Bug `shift(-h)` sem `groupby('municipio_id')` contaminava targets entre municípios
+- **Fix crítico Gold HF Hub** — `publicacao.py` publicava parquet restaurado em vez de exportar do DuckDB; Gold parado em 12/04 por 5 semanas (ADR-032)
+- Quantis CQR migrados de q01/q99 para q05/q95 — bandas 34% mais estreitas mantendo 90% de cobertura
 
 ### Métricas (expanding window)
 | Horizonte | R² | MAE | Cobertura calibrada |
@@ -59,11 +61,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - ADR-030 atualizado — status Implementado, métricas reais, artefatos
 - ADR-031 — Calibração conformal das bandas (Romano et al., NeurIPS 2019)
 
+### Entregues nesta versão
+- `scripts/gerar_previsao_bairros.py` — reescrito para 12 modelos Direct CQR + bandas IDW
+- `app/components/dados.py` — `carregar_modelos_direct_hf()` + `fazer_previsao_local()` com bandas
+- `app/components/aba_previsao.py` v4.0 — banda sombreada Plotly + tabela com limites
+- `src/tasks/publicacao.py` — exportação DuckDB → parquet antes de publicar
+
 ### Pendente (próximas sessões)
-- `scripts/gerar_previsao_bairros.py` — consumir modelo por horizonte
-- `app/components/dados.py` + `aba_previsao.py` — bandas CQR no dashboard
-- `src/pipeline_prefect.py` + `publicacao.py` — orquestração e HF Hub
-- Testes pytest
+- Filtro de horizonte na aba Previsão (slider não respeitado)
+- `src/pipeline_prefect.py` — integrar `treinar_direto_cqr` no fluxo semanal
+- Testes pytest para modelos Direct CQR
+- Merge dev→main validado com CI/CD
 
 ---
 

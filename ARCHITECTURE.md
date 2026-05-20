@@ -32,7 +32,7 @@ flowchart TB
     end
 
     subgraph ML["🤖 Machine Learning"]
-        LGB[LightGBM v5]
+        LGB[Direct CQR — 12 modelos<br>4 horizontes × 3 quantis]
         DRIFT[Drift Monitor — Wasserstein]
     end
 
@@ -103,8 +103,8 @@ flowchart TB
    dbt test → PASS=59 testes declarativos
    data_fim passado dinamicamente via --vars (ADR-026)
 
-5. EXPORTAÇÃO
-   scripts/exportar_gold.py
+5. EXPORTAÇÃO (ADR-032)
+   DuckDB (mart_dengue_features) ──→ data/gold/*.parquet
    Gold local ──→ HF Hub (snapshot datado + latest)
 
 6. DISTRIBUIÇÃO ESPACIAL (scripts/gerar_previsao_bairros.py)
@@ -317,7 +317,8 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 | v2.1 | Mai/2026 | ✅ | IDW dinâmico, dashboard v5, deploy produção |
 | v2.2 | Mai/2026 | ✅ | EDA Gold v5 (17 figuras), backtesting expanding window, baselines |
 | v2.3 | Mai/2026 | ✅ | Intervalos CQR (Romano et al. 2019), SHAP atualizado (4 figuras) |
-| v3.0 | Jun/2026 | 📋 | Artigo SENIC 2026, relatório extensionista IFMT |
+| v2.4 | Mai/2026 | ✅ | Direct CQR 12 modelos, bandas 90%, fix Gold DuckDB (ADR-032) |
+| v3.0 | Jun/2026 | 📋 | Relatório extensionista IFMT |
 
 ---
 

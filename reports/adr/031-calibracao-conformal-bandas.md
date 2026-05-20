@@ -21,26 +21,34 @@ calibração adicional (Meinshausen, 2006; Romano et al., 2019).
 
 ## Decisão
 Aplicar **calibração conformal** (Romano et al., NeurIPS 2019) sobre
-os quantis brutos q01/q99 para atingir ~90% de cobertura.
+os quantis brutos para atingir ~90% de cobertura.
+
+### Evolução dos quantis
+- **Sessão 18/05**: q01/q99 — bandas conservadoras, q_conformal negativo (estreitava)
+- **Sessão 19/05**: migração para q05/q95 — bandas 34% mais estreitas, q_conformal ≈ 0
+
+A migração para q05/q95 foi motivada pela largura excessiva das bandas
+q01/q99 (ex: Cuiabá SE+1 [3–41] para mediana de 6). Com q05/q95, as
+bandas ficaram [4–29] — mais informativas para o gestor de saúde.
 
 ### Método
-1. Treinar modelos q01 e q99 com dataset completo
+1. Treinar modelos q05 e q95 com dataset completo
 2. Separar 20% final como conjunto de calibração
-3. Calcular resíduos de conformidade: `max(q01 - y_real, y_real - q99)`
+3. Calcular resíduos de conformidade: `max(q05 - y_real, y_real - q95)`
 4. Obter quantil 90% dos resíduos → `q_conformal`
-5. Bandas ajustadas: `[q01 - q_conf, q99 + q_conf]`
+5. Bandas ajustadas: `[q05 - q_conf, q95 + q_conf]`
 
-### Resultados
+### Resultados (q05/q95 — versão final)
 | Horizonte | q_conformal | Cobertura calibrada |
 |---|---|---|
-| h=1 | -2.2 | 90.1% |
-| h=2 | -2.7 | 90.1% |
-| h=4 | -1.3 | 90.0% |
-| h=8 | -2.4 | 89.9% |
+| h=1 | -0.0 | 90.1% |
+| h=2 | -0.0 | 90.1% |
+| h=4 | -0.0 | 90.0% |
+| h=8 | -0.0 | 89.9% |
 
-O `q_conformal` negativo indica que os quantis q01/q99 são
-ligeiramente conservadores — a calibração estreita as bandas,
-tornando-as mais precisas.
+O `q_conformal` ≈ 0 indica que os quantis q05/q95 já atingem ~90%
+de cobertura no conjunto de calibração sem ajuste adicional — as
+bandas estão naturalmente calibradas.
 
 ## Consequências
 
@@ -55,7 +63,7 @@ tornando-as mais precisas.
 - q_conformal é recalculado a cada treino — pode variar
 
 ### Invariantes
-- Modelos q01/q99 treinados com dataset completo (não afetados)
+- Modelos q05/q95 treinados com dataset completo (não afetados)
 - q_conformal salvo em `direct_cqr_metadata.json` para uso na inferência
 
 ## Referências

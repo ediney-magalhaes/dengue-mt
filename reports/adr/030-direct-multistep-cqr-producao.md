@@ -95,17 +95,17 @@ treinando 12 modelos independentes: 4 horizontes × 3 quantis (q05, q50, q95).
 
 ```
 models/lgbm_h1_q50_latest.pkl    # mediana, horizonte 1 SE (≈ modelo v5 atual)
-models/lgbm_h1_q01_latest.pkl    # lower bound, horizonte 1 SE
-models/lgbm_h1_q99_latest.pkl    # upper bound, horizonte 1 SE
+models/lgbm_h1_q05_latest.pkl    # lower bound, horizonte 1 SE
+models/lgbm_h1_q95_latest.pkl    # upper bound, horizonte 1 SE
 models/lgbm_h2_q50_latest.pkl    # mediana, horizonte 2 SE
-models/lgbm_h2_q01_latest.pkl    # lower bound, horizonte 2 SE
-models/lgbm_h2_q99_latest.pkl    # upper bound, horizonte 2 SE
+models/lgbm_h2_q05_latest.pkl    # lower bound, horizonte 2 SE
+models/lgbm_h2_q95_latest.pkl    # upper bound, horizonte 2 SE
 models/lgbm_h4_q50_latest.pkl    # mediana, horizonte 4 SE
-models/lgbm_h4_q01_latest.pkl    # lower bound, horizonte 4 SE
-models/lgbm_h4_q99_latest.pkl    # upper bound, horizonte 4 SE
+models/lgbm_h4_q05_latest.pkl    # lower bound, horizonte 4 SE
+models/lgbm_h4_q95_latest.pkl    # upper bound, horizonte 4 SE
 models/lgbm_h8_q50_latest.pkl    # mediana, horizonte 8 SE
-models/lgbm_h8_q01_latest.pkl    # lower bound, horizonte 8 SE
-models/lgbm_h8_q99_latest.pkl    # upper bound, horizonte 8 SE
+models/lgbm_h8_q05_latest.pkl    # lower bound, horizonte 8 SE
+models/lgbm_h8_q95_latest.pkl    # upper bound, horizonte 8 SE
 models/direct_cqr_metadata.json  # calibração conformal + métricas
 ```
 
@@ -163,7 +163,7 @@ exclusiva do módulo de treino.
 ## Artefatos (implementados — commit 82)
 - `src/config.py` — paths Direct CQR, HORIZONTES_DIRECT, QUANTIS_CQR
 - `src/tasks/treinar_direto_cqr.py` — módulo de treino dos 12 modelos
-- `models/lgbm_h{1,2,4,8}_q{01,50,99}_latest.pkl` — 12 modelos
+- `models/lgbm_h{1,2,4,8}_q{05,50,95}_latest.pkl` — 12 modelos
 - `models/direct_cqr_metadata.json` — calibração conformal + métricas
 - `reports/adr/030-direct-multistep-cqr-producao.md` — este documento
 - `reports/adr/031-calibracao-conformal-bandas.md` — ADR calibração
@@ -178,7 +178,8 @@ exclusiva do módulo de treino.
 
 ### Decisões de implementação vs planejado
 - Horizontes: h=1,2,3,4 planejado → h=1,2,4,8 implementado (alinhado com backtesting)
-- Quantis: q05/q95 planejado → q01/q99 implementado (cobertura insuficiente com 0.05/0.95)
+- Quantis: q05/q95 planejado → q01/q99 (sessão 18/05) → q05/q95 final (sessão 19/05, bandas 34% mais estreitas)
+- Fix crítico: `publicacao.py` não exportava Gold do DuckDB — publicava parquet restaurado (ADR-032)
 - Calibração conformal integrada no módulo de treino (ADR-031)
 - `build_features.py` não alterado — targets criados dentro do `treinar_direto_cqr.py`
 - Validação: expanding window em vez de TimeSeriesSplit (conforme literatura)

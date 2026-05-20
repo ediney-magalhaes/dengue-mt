@@ -76,6 +76,8 @@ def render_aba_previsao(horizonte: int, municipio_sel: str = 'Todos'):
 
             df_hist_mun = df_hist[df_hist['municipio_id'] == mun_id].copy()
             df_prev_mun = df_prev[df_prev['municipio_id'] == mun_id].copy()
+            # Filtrar horizontes pelo slider do sidebar
+            df_prev_mun = df_prev_mun[df_prev_mun['horizonte_se'] <= semanas].copy()
 
             if df_hist_mun.empty or df_prev_mun.empty:
                 continue

@@ -76,7 +76,7 @@ def _gerar_legenda_html(limiares: dict, mun_sel: str) -> str:
     <b>🦟 Casos Previstos — Dengue MT</b><br>
     {linhas}
     <hr style="margin:4px 0">
-    <i>Previsão LightGBM v5 × IDW</i><br>
+    <i>Previsão LightGBM Direct CQR × IDW</i><br>
     <i>Limiares adaptativos (percentis)</i>
     </div>
     """
@@ -93,7 +93,7 @@ def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos'):
     st.subheader("🗺️ Distribuição Espacial de Casos Previstos")
     st.caption(
         "Previsão de casos distribuída por bairro via IDW (Inverse Distance Weighting). "
-        "Modelo LightGBM v5 atualizado automaticamente toda semana."
+        "Modelo LightGBM Direct Multi-Step (CQR 90%) atualizado automaticamente toda semana."
     )
 
     # ── Carrega GeoDataFrame + limiares (fonte única: GeoJSON) ──
@@ -214,7 +214,8 @@ def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos'):
     # ── Nota metodológica ─────────────────────────────────────
     st.markdown("---")
     st.info(
-        "**Metodologia:** Previsão de casos municipais via LightGBM v5 distribuída "
+        "**Metodologia:** Previsão de casos municipais via LightGBM Direct Multi-Step "
+        "(4 horizontes: SE+1, +2, +4, +8 — bandas CQR 90% calibradas) distribuída "
         "espacialmente por bairro usando Inverse Distance Weighting (IDW) com pesos "
         "calibrados pelo histórico de notificações por UBS (SINAN + CNES). "
         "Propriedade pycnophylactic preservada — Σ casos bairros = previsão municipal. "

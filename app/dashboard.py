@@ -34,9 +34,10 @@ with st.sidebar:
     st.markdown("*Cuiabá e Várzea Grande — IFMT*")
     st.markdown("---")
 
-    horizonte = st.slider(
+    horizonte = st.select_slider(
         "Horizonte de previsão (semanas)",
-        min_value=1, max_value=4, value=2, step=1
+        options=[1, 2, 4, 8],
+        value=2
     )
     st.caption("Aplica-se ao Mapa e Previsão")
 

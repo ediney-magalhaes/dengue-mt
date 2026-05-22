@@ -28,6 +28,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.4.2] — 2026-05-21
+
+### Infraestrutura
+- **Keep Dashboard Alive** — workflow `keepalive.yml` com cron a cada 4h para evitar hibernação do Streamlit Community Cloud (commit 90)
+- **Node.js 24 migration** — `actions/checkout@v4` → `@v5`, `actions/cache@v4` → `@v5` (deadline GitHub: 16/06/2026) (commit 90)
+
+---
+
 ## [2.4.1] — 2026-05-20
 
 ### Corrigido

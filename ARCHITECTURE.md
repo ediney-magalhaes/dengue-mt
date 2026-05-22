@@ -261,6 +261,7 @@ dbt test → PASS=59 WARN=0 ERROR=0
 | Dashboard | Streamlit Community Cloud | Gratuito, online, 5 abas |
 | MLflow | SQLite local | Versionamento formal de experimentos |
 | CI/CD | GitHub Actions | Execução automática domingo 06h Cuiabá |
+| Keep-alive | GitHub Actions cron 4h | Evita hibernação Streamlit Community Cloud |
 | Intervalos | MAPIE 1.4 (CQR) | Conformal prediction, distribution-free |
 | Interpretabilidade | SHAP 0.51 (TreeExplainer) | Importância por feature, dependence plots |
 
@@ -323,7 +324,7 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 | v2.2 | Mai/2026 | ✅ | EDA Gold v5 (17 figuras), backtesting expanding window, baselines |
 | v2.3 | Mai/2026 | ✅ | Intervalos CQR (Romano et al. 2019), SHAP atualizado (4 figuras) |
 | v2.4 | Mai/2026 | ✅ | Direct CQR 12 modelos, bandas 90%, fix Gold DuckDB (ADR-032) |
-| v3.0 | Jun/2026 | 📋 | Relatório extensionista IFMT |
+| v2.4.2 | Mai/2026 | ✅ | Keep-alive dashboard, Node.js 24 migration (checkout@v5, cache@v5) |
 
 ---
 

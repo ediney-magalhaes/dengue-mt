@@ -261,6 +261,7 @@ dbt test → PASS=59 WARN=0 ERROR=0
 | Dashboard | Streamlit Community Cloud | Gratuito, online, 5 abas |
 | MLflow | SQLite local | Versionamento formal de experimentos |
 | CI/CD | GitHub Actions | Execução automática domingo 06h Cuiabá |
+| MODIS mensal | GitHub Actions cron dia 5/mês | AppEEARS isolado — não impacta pipeline semanal |
 | Keep-alive | GitHub Actions cron 4h + Playwright | Chromium headless renderiza página de fato (curl insuficiente para SPAs) |
 | Intervalos | MAPIE 1.4 (CQR) | Conformal prediction, distribution-free |
 | Interpretabilidade | SHAP 0.51 (TreeExplainer) | Importância por feature, dependence plots |

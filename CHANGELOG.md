@@ -40,6 +40,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - [Streamlit Keepalive with Playwright](https://zenn.dev/shogaku/articles/streamlit-keepalive-playwright) — problema documentado: HTTP 200/303 não acorda SPAs
 - [Streamlit-App-KeepAlive](https://github.com/ToroData/Streamlit-App-KeepAlive) — abordagem alternativa com curl (insuficiente para SPAs)
 
+### Adicionado
+- **Workflow MODIS mensal** — `modis_mensal.yml` com cron dia 5/mês às 06h Cuiabá; ingere NDVI/EVI via AppEEARS e publica Bronze no HF Hub, isolado do pipeline semanal (commit 96)
+- `scripts/atualizar_modis.py` — script standalone de re-ingestão e publicação
+- Timeout `aguardar_tarefa()` aumentado de 30 para 60 min por município
+
 ---
 
 ## [2.4.2] — 2026-05-21

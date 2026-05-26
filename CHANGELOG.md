@@ -28,6 +28,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.4.3] — 2026-05-25
+
+### Corrigido
+- **Keep-alive Playwright** — `curl` retornava HTTP 303 (shell estático) sem iniciar o processo Python do app; substituído por Chromium headless via Playwright que renderiza a página de fato e clica no botão de wake-up quando necessário (commits 92–94)
+- Seletor `networkidle` incompatível com WebSocket do Streamlit — substituído por `domcontentloaded` + verificação por conteúdo (>10KB = app real vs ~4KB = shell estático)
+- Seletor `data-testid="stAppViewContainer"` removido — não existe na versão atual do Streamlit; verificação agora usa título do dashboard + fallback por tamanho
+- Upload de screenshot debug em caso de falha (`actions/upload-artifact@v4`)
+
+### Referências
+- [Streamlit Keepalive with Playwright](https://zenn.dev/shogaku/articles/streamlit-keepalive-playwright) — problema documentado: HTTP 200/303 não acorda SPAs
+- [Streamlit-App-KeepAlive](https://github.com/ToroData/Streamlit-App-KeepAlive) — abordagem alternativa com curl (insuficiente para SPAs)
+
+---
+
 ## [2.4.2] — 2026-05-21
 
 ### Infraestrutura

@@ -1,0 +1,37 @@
+# ============================================================
+# Dengue MT — Atualização Mensal MODIS AppEEARS
+# Baixa NDVI/EVI mensais via NASA AppEEARS e publica no HF Hub.
+# O pipeline semanal consome o Bronze MODIS do HF Hub via restore.
+# Isolado do pipeline semanal — falha aqui não afeta produção.
+# ============================================================
+name: MODIS Mensal
+on:
+  schedule:
+    # Dia 5 de cada mês às 09:00 UTC (06h Cuiabá)
+    # Dia 5 garante que o composto mensal MODIS já foi processado
+    - cron: '0 9 5 * *'
+  workflow_dispatch:  # permite disparo manual para teste
+jobs:
+  atualizar-modis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3h — AppEEARS pode ter fila longa
+    env:
+      MODIS_USUARIO: ${{ secrets.MODIS_USUARIO }}
+      MODIS_SENHA: ${{ secrets.MODIS_SENHA }}
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install requests pandas pyarrow huggingface_hub python-dotenv
+
+      - name: Atualizar MODIS via AppEEARS
+        run: python scripts/atualizar_modis.py

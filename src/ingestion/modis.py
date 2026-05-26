@@ -95,7 +95,7 @@ def submeter_tarefa(token: str, municipio: str, info: dict,
 
 
 def aguardar_tarefa(token: str, task_id: str,
-                    timeout_min: int = 30) -> bool:
+                    timeout_min: int = 60) -> bool:
     """
     Aguarda conclusão da tarefa. Retorna True se concluída com sucesso.
     Verifica a cada 30 segundos por até timeout_min minutos.

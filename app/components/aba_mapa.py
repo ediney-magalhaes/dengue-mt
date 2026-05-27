@@ -93,7 +93,8 @@ def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos'):
     st.subheader("🗺️ Distribuição Espacial de Casos Previstos")
     st.caption(
         "Previsão de casos distribuída por bairro via IDW (Inverse Distance Weighting). "
-        "Modelo LightGBM Direct Multi-Step (CQR 90%) atualizado automaticamente toda semana."
+        "Modelo LightGBM Direct Multi-Step (CQR 90%) atualizado automaticamente toda semana. "
+        "Os indicadores abaixo mostram a quantidade de bairros em cada faixa de classificação."
     )
 
     # ── Carrega GeoDataFrame + limiares (fonte única: GeoJSON) ──
@@ -129,11 +130,11 @@ def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos'):
     # ── Métricas resumo ───────────────────────────────────────
     dist = gdf_fil[col_nivel].value_counts().to_dict()
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("🔴 Muito Alto",  dist.get('Muito Alto', 0))
-    c2.metric("🟠 Alto",        dist.get('Alto', 0))
-    c3.metric("🟡 Moderado",    dist.get('Moderado', 0))
-    c4.metric("🔵 Baixo",       dist.get('Baixo', 0))
-    c5.metric("⚫ Muito Baixo", dist.get('Muito Baixo', 0))
+    c1.metric("🔴 Muito Alto",  f"{dist.get('Muito Alto', 0)} bairros")
+    c2.metric("🟠 Alto",        f"{dist.get('Alto', 0)} bairros")
+    c3.metric("🟡 Moderado",    f"{dist.get('Moderado', 0)} bairros")
+    c4.metric("🔵 Baixo",       f"{dist.get('Baixo', 0)} bairros")
+    c5.metric("⚫ Muito Baixo", f"{dist.get('Muito Baixo', 0)} bairros")
 
     st.markdown("---")
 

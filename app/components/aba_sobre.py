@@ -50,7 +50,6 @@ def render_aba_sobre():
         | **Registros** | 856 semanas × 54 features |
 
         > Métrica oficial: **TimeSeriesSplit 5-fold** —
-        > academicamente defensável para publicação.
         > Ver [ADR-006](https://github.com/ediney-magalhaes/dengue-mt/blob/main/reports/adr/006-metrica-oficial-timeseriessplit.md).
 
         ### 📈 Capacidades adicionais
@@ -78,5 +77,4 @@ def render_aba_sobre():
     - Custo total de infraestrutura: **R$ 0,00**
     - Código aberto: [github.com/ediney-magalhaes/dengue-mt](https://github.com/ediney-magalhaes/dengue-mt)
     - Dataset público: [HF Hub](https://huggingface.co/datasets/edyestatistica/dengue-mt-medallion)
-    - Artigo submetido: **CBIS'26** (Congresso Brasileiro de Informática em Saúde)
     """)

@@ -258,7 +258,8 @@ dbt test → PASS=59 WARN=0 ERROR=0
 | Validação | TimeSeriesSplit 5 folds | Evita data leakage temporal |
 | Drift monitoring | Wasserstein distance | Normalizada por feature, 3 níveis acionáveis |
 | Storage | Hugging Face Hub | Gratuito, ilimitado público |
-| Dashboard | Streamlit Community Cloud | Gratuito, online, 5 abas |
+| Dashboard | Streamlit Community Cloud | Gratuito, online, 6 abas |
+| Assets estáticos | `app/assets/shap/` | PNGs SHAP servidos localmente — sem recálculo em runtime |
 | MLflow | SQLite local | Versionamento formal de experimentos |
 | CI/CD | GitHub Actions | Execução automática domingo 06h Cuiabá |
 | MODIS mensal | GitHub Actions cron dia 5/mês | AppEEARS isolado — não impacta pipeline semanal |
@@ -293,13 +294,24 @@ dbt test → PASS=59 WARN=0 ERROR=0
 
 ### Interpretabilidade (SHAP — Lundberg & Lee, 2017)
 
-| Feature | |SHAP| médio | Grupo |
-|---|---|---|
-| Casos MM4 | 0.671 | Epidemiológico |
-| Casos lag 1 SE | 0.222 | Epidemiológico |
-| temp_media_mm8 | 0.043 | Climático |
-| Casos lag 2 SE | 0.039 | Epidemiológico |
-| temp_media_mm4 | 0.030 | Climático |
+TreeSHAP (Lundberg et al., Nature MI 2020) calculado sobre modelos q50
+de cada horizonte Direct CQR. Script: `notebooks/backtesting/04_shap_direct_cqr.py`.
+Atualizar após cada retreino do pipeline semanal.
+
+| Horizonte | Feature dominante    | \|SHAP\| | Interpretação          |
+|-----------|----------------------|----------|------------------------|
+| h=1 SE    | casos_mm4            | 0.6923   | Modelo reativo         |
+| h=2 SE    | casos_mm4            | 0.6681   | Momentum ainda domina  |
+| h=4 SE    | casos_mm4            | 0.4129   | Transição estrutural   |
+| h=8 SE    | notif_acum_ano_lag1  | 0.3885   | Modelo prospectivo     |
+
+Padrão: momentum autoregressivo domina horizontes curtos; sazonalidade
+histórica e precipitação acumulada (`precip_acum8`) dominam h=8.
+Consistente com ciclo biológico do *Aedes aegypti* (~2-3 semanas)
+e com Taieb & Hyndman (2014).
+
+Artefatos: `reports/shap/direct_cqr/` (33 figuras + 13 CSVs)
+Dashboard: aba "🔍 Explicabilidade" — interativa com sidebar (horizonte + município)
 
 ---
 
@@ -327,7 +339,7 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 | v2.4 | Mai/2026 | ✅ | Direct CQR 12 modelos, bandas 90%, fix Gold DuckDB (ADR-032) |
 | v2.4.2 | Mai/2026 | ✅ | Keep-alive dashboard, Node.js 24 migration (checkout@v5, cache@v5) |
 | v2.4.3 | Mai/2026 | ✅ | Keep-alive Playwright (curl não acordava SPA), seletor resiliente |
-
+| v2.5 | Jun/2026 | ✅ | SHAP Direct CQR (4 horizontes × 2 municípios), aba Explicabilidade dashboard, ADR-034 |
 
 ---
 

@@ -28,6 +28,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.5.0] — 2026-06-01
+
+### Adicionado
+- **Análise SHAP para Direct CQR** — `notebooks/backtesting/04_shap_direct_cqr.py`
+  - TreeSHAP (Lundberg et al., Nature MI 2020) sobre modelos q50 dos 4 horizontes
+  - Análise global (ambos municípios) + por município (Cuiabá e Várzea Grande)
+  - 33 figuras: beeswarm, bar top20, dependence, temporal por horizonte + comparativo
+  - 13 CSVs de importância: por horizonte, por município, consolidado (184 linhas)
+  - Imputação de mediana para NaN no dependence plot (compatibilidade shap.dependence_plot)
+- **Aba Explicabilidade no dashboard** — `app/components/aba_shap.py`
+  - 6ª aba: "🔍 Explicabilidade" — integrada ao sidebar (horizonte + município)
+  - 4 seções: importância global, beeswarm, temporal por fase epidêmica, comparativo horizontes
+  - Textos explicativos para público não-técnico em cada seção
+  - Detalhes técnicos e referências bibliográficas em expander
+- `app/assets/shap/` — assets estáticos PNG servidos pelo Streamlit Cloud
+
+### Resultado principal (SHAP)
+- h=1,2: `casos_mm4` domina (|SHAP|=0.69, 0.67) — modelo reativo ao momentum epidêmico
+- h=4: transição estrutural — `casos_mm4` cede espaço para `notif_acum_ano_lag1`
+- h=8: `notif_acum_ano_lag1` (0.39) + `precip_acum8` (0.33) assumem o topo — modelo prospectivo
+- Padrão consistente com ciclo biológico do *Aedes aegypti* (~2-3 semanas) e com
+  Taieb & Hyndman (2014) — resultado publicável direto para o CBIS'26
+
+### Documentação
+- ADR-034 — SHAP para Direct CQR (decisões: q50 apenas, PNG estático, script offline,
+  análise por município, ciclo de atualização pós-retreino)
+
+### Commits
+- (98) `be8acd4` — script SHAP + artefatos (33 figuras + 13 CSVs)
+- (99) `85750a5` — aba Explicabilidade no dashboard + assets
+
+### Referências
+- Lundberg & Lee (NeurIPS 2017) — SHAP original
+- Lundberg et al. (Nature MI 2020) — TreeSHAP
+- Taieb & Hyndman (2014) — Direct multi-step forecasting
+- Molnar, C. (2023) — *Interpretable Machine Learning*, cap. 8-9
+
+---
+
 ## [2.4.3] — 2026-05-25
 
 ### Corrigido

@@ -28,6 +28,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.6.0] — 2026-06-02
+
+### Adicionado
+- **Gate Champion-Challenger Direct CQR** — `gate_promocao_direct_cqr()` em `src/tasks/retreino.py`
+  - Padrão Champion-Challenger (Databricks MLOps 2024; DataRobot 2025)
+  - Três critérios independentes — todos obrigatórios antes de qualquer promoção:
+    - **MAE por horizonte** (q50): MAE novo ≤ MAE champion × 1.10 para h ∈ {1,2,4,8} (García Crespi et al. 2025)
+    - **Cobertura calibrada CQR**: cobertura_calibrada ≥ 0.85 para h ∈ {1,2,4,8} (Romano et al. 2019; Angelopoulos & Bates 2023)
+    - **pytest 21 testes**: returncode == 0 (Sculley et al. 2015)
+  - Rollback automático: arquivos `latest` não alterados se gate reprovar
+  - Publicação de bairros bloqueada até aprovação do gate
+  - Primeira execução (bootstrap): aprovação automática sem Champion anterior
+- **`scripts/publicar_modelos_direct.py`** — publicação manual com confirmação explícita e aviso de bypass do gate
+- **ADR-035** — Gate de Promoção/Rollback para Modelos Direct CQR
+
+### Corrigido
+- **`.gitignore` encoding UTF-16 BOM → UTF-8** — problema raiz que impedia todas as regras de funcionar no Windows; corrigido via `[System.Text.UTF8Encoding]::new($false)`
+- `.gitignore` expandido: `pycache` em subdiretórios aninhados, `reports/pipeline.log`, `reports/mermaid-diagram-*.png`, `reports/execucao_*.md`, `reports/eda/`, scripts exploratórios
+
+### Alterado
+- `src/pipeline_prefect.py` — gate inserido entre `treinar_direto_cqr()` e `publicar_previsao_bairros()`; publicação condicional ao resultado do gate
+- `README.md` — reescrito para perfil de produto: foco em resultados, desafios de engenharia e boas práticas
+- `ARCHITECTURE.md` — tabela de Decisões Arquiteturais adicionada ao início; etapa 5c (gate) inserida no fluxo semanal; roadmap atualizado
+
+### Commits
+- (101) `8865db3` — gate Champion-Challenger + ADR-035
+- (102) `46ac8a0` — publicar_modelos_direct.py com aviso de bypass
+- (103) `e4ec67f` — gitignore robusto
+- (104) `dbabb04` — fix encoding UTF-16 BOM
+
+### Referências
+- Sculley et al. (2015). Hidden Technical Debt in Machine Learning Systems. NeurIPS.
+- Romano, Y., Patterson, E., & Candès, E. (2019). Conformalized Quantile Regression. NeurIPS.
+- Angelopoulos, A. & Bates, S. (2023). A Gentle Introduction to Conformal Prediction. Foundations and Trends in ML.
+- García Crespi et al. (2025). Rolling-Origin Validation Reverses Model Rankings in Multi-Step Forecasting. arXiv:2603.20315.
+
+---
+
 ## [2.5.0] — 2026-06-01
 
 ### Adicionado

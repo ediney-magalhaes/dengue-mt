@@ -4,6 +4,20 @@
 
 ---
 
+## Decisões Arquiteturais
+
+| Decisão | Justificativa |
+|---|---|
+| dbt Core + DuckDB | ELT local sem custo — SQL versionado com testes declarativos e rastreabilidade por camada |
+| Hugging Face Hub | Armazenamento gratuito, versionado e acessível pelo dashboard sem infraestrutura própria |
+| LightGBM | Melhor desempenho com dados tabulares esparsos, lida com NaN nativamente, retreino rápido |
+| Direct Multi-Step | Evita propagação de erro do forecasting recursivo — cada horizonte treina independentemente (Taieb & Hyndman 2014) |
+| CQR (Conformal Quantile Regression) | Intervalos de predição calibrados com garantia de cobertura marginal finita (Romano et al. 2019) |
+| SHAP (TreeExplainer) | Interpretabilidade fiel ao modelo — valores aditivos por feature, auditável por gestores de saúde |
+| Champion-Challenger gate | Nenhum modelo vai a produção sem superar MAE+cobertura+pytest do modelo atual (Sculley et al. 2015) |
+| GitHub Actions schedule | Orquestração semanal autônoma sem Prefect Cloud — custo zero, auditável via logs públicos |
+---
+
 ## Visão Geral
 
 ```mermaid
@@ -110,9 +124,19 @@ flowchart TB
 5b. TREINO DIRECT CQR (src/tasks/treinar_direto_cqr.py)
     Gold v5 ──→ 12 modelos (4 horizontes × 3 quantis q05/q50/q95)
     Calibração conformal ──→ cobertura ~90% garantida
-    Modelos salvos em models/ + metadata JSON
+    Modelos salvos em models/ + metadata JSON (Challenger)
+
+5c. GATE CHAMPION-CHALLENGER (src/tasks/retreino.py — ADR-035)
+    Challenger vs Champion (direct_cqr_metadata.json atual)
+    Critério 1: MAE[h] novo ≤ MAE[h] atual × 1.10 — para h ∈ {1,2,4,8}
+    Critério 2: cobertura_calibrada[h] ≥ 0.85 — para h ∈ {1,2,4,8}
+    Critério 3: pytest 21 testes passando
+    ✅ Aprovado  ──→ Etapa 6 (publicação ativada)
+    ❌ Reprovado ──→ Champion mantido + alerta Telegram (publicação bloqueada)
+    Referências: Sculley et al. 2015; Romano et al. 2019; García Crespi et al. 2025
 
 6. DISTRIBUIÇÃO ESPACIAL (scripts/gerar_previsao_bairros.py)
+    ⚠️  Só executa se gate aprovado
    Previsão municipal ──→ IDW mass-preserving ──→ 143 bairros
    Limiares adaptativos P60/P75/P85/P95 por município
    GeoJSON ──→ HF Hub (previsao_bairros_latest.geojson)
@@ -340,6 +364,7 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 | v2.4.2 | Mai/2026 | ✅ | Keep-alive dashboard, Node.js 24 migration (checkout@v5, cache@v5) |
 | v2.4.3 | Mai/2026 | ✅ | Keep-alive Playwright (curl não acordava SPA), seletor resiliente |
 | v2.5 | Jun/2026 | ✅ | SHAP Direct CQR (4 horizontes × 2 municípios), aba Explicabilidade dashboard, ADR-034 |
+| v2.6 | Jun/2026 | ✅ | Gate Champion-Challenger Direct CQR (ADR-035) — MAE + cobertura CQR + pytest por horizonte |
 
 ---
 

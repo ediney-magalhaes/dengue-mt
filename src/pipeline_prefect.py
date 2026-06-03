@@ -158,11 +158,34 @@ def pipeline_semanal():
     log_etapa('treinar_direto_cqr', t0, resultado_direct)
     logger.info(
         f"Direct CQR: {resultado_direct.get('n_modelos', 0)} modelos treinados"
-      )
+    )
 
+    # ── Gate Champion-Challenger (ADR-035) ────────────────────────
+    # Valida Challenger antes de publicar — Sculley et al. 2015;
+    # Romano et al. 2019; García Crespi et al. 2025
+    from src.tasks.retreino import gate_promocao_direct_cqr
     t0 = time.time()
-    publicacao_bairros = publicar_previsao_bairros()
-    log_etapa('publicar_previsao_bairros', t0, publicacao_bairros)
+    resultado_gate = gate_promocao_direct_cqr(resultado_direct)
+    log_etapa('gate_promocao_direct_cqr', t0, resultado_gate)
+
+    if resultado_gate['promovido']:
+        logger.info("Gate aprovado — publicando previsão por bairro ✅")
+        t0 = time.time()
+        publicacao_bairros = publicar_previsao_bairros()
+        log_etapa('publicar_previsao_bairros', t0, publicacao_bairros)
+    else:
+        logger.warning(
+            f"Gate reprovado — Champion mantido ❌ | "
+            f"Motivo: {resultado_gate.get('motivo_rejeicao')}"
+        )
+        alerta_pipeline_falhou(
+            'gate_promocao_reprovado',
+            resultado_gate.get('motivo_rejeicao', 'critério não especificado')
+        )
+        publicacao_bairros = {
+            'status': 'bloqueado_pelo_gate',
+            'motivo': resultado_gate.get('motivo_rejeicao'),
+        }
 
     # ============================================================
     # ETAPA 4 — DRIFT + RETREINO

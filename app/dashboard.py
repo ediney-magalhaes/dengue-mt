@@ -7,6 +7,8 @@ Como rodar:
 """
 import streamlit as st
 import pandas as pd
+from dotenv import load_dotenv
+load_dotenv()
 from components.dados import get_saude, get_historico
 from components.banner_drift import render_banner_drift
 from components.aba_mapa import render_aba_mapa
@@ -16,6 +18,7 @@ from components.aba_previsao import render_aba_previsao
 from components.aba_sobre import render_aba_sobre
 from components.aba_monitoramento import render_aba_monitoramento
 from components.aba_shap import render_aba_shap
+from components.relatorio_pdf import gerar_pdf_boletim
 
 # ============================================================
 # CONFIGURAÇÃO DA PÁGINA
@@ -128,6 +131,34 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 
 with aba1:
     render_aba_mapa(horizonte, municipio_sel, semana_hist)
+
+    st.markdown("---")
+    st.markdown("#### 📄 Exportar Boletim")
+    if st.button("Gerar PDF desta semana", type="primary"):
+        with st.spinner("Gerando boletim... aguarde (consulta IA)"):
+            from components.dados import get_previsao_bairros, get_previsao_bairros_snapshot
+            if semana_hist == 'Semana atual':
+                gdf_pdf, limiares_pdf = get_previsao_bairros()
+            else:
+                gdf_pdf, limiares_pdf = get_previsao_bairros_snapshot(semana_hist)
+
+            if gdf_pdf is not None:
+                pdf_bytes = gerar_pdf_boletim(
+                    gdf_pdf, limiares_pdf,
+                    horizonte, municipio_sel, semana_hist
+                )
+                nome_arquivo = (
+                    f"boletim_dengue_mt_SE{horizonte}_"
+                    f"{semana_hist.replace(' ', '_')}_{municipio_sel}.pdf"
+                )
+                st.download_button(
+                    label="⬇️ Baixar PDF",
+                    data=pdf_bytes,
+                    file_name=nome_arquivo,
+                    mime="application/pdf",
+                )
+            else:
+                st.error("Não foi possível carregar os dados para gerar o PDF.")
 
 with aba2:
     render_aba_serie(municipio_sel)

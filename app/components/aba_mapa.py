@@ -11,6 +11,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from components.dados import get_previsao_bairros
+from components.dados import get_previsao_bairros, get_previsao_bairros_snapshot
 
 
 CORES_RISCO = {
@@ -82,7 +83,7 @@ def _gerar_legenda_html(limiares: dict, mun_sel: str) -> str:
     """
 
 
-def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos'):
+def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos', semana_hist: str = 'Semana atual'):
     """
     Renderiza mapa choropleth de distribuição espacial de casos previstos.
 
@@ -98,10 +99,13 @@ def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos'):
     )
 
     # ── Carrega GeoDataFrame + limiares (fonte única: GeoJSON) ──
-    resultado = get_previsao_bairros()
+    if semana_hist == 'Semana atual':
+        resultado = get_previsao_bairros()
+    else:
+        resultado = get_previsao_bairros_snapshot(semana_hist)
 
     if resultado is None or resultado[0] is None:
-        st.error("❌ Dados de previsão por bairro não disponíveis.")
+        st.error("❌ Dados não disponíveis para a semana selecionada.")
         return
 
     gdf, limiares = resultado

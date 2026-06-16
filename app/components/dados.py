@@ -336,5 +336,58 @@ def get_previsao_bairros():
 
         return gdf, limiares
 
+    
+
+    except Exception:
+        return None, {}
+    
+@st.cache_data(ttl=3600)
+def get_lista_snapshots_bairros() -> list[str]:
+    """
+    Lista snapshots históricos de previsão por bairro disponíveis no HF Hub.
+    Retorna lista de datas no formato 'YYYY-MM-DD', ordenada do mais recente
+    para o mais antigo. Retorna lista vazia se falhar.
+    """
+    try:
+        from huggingface_hub import HfApi
+        api = HfApi()
+        arquivos = api.list_repo_files(
+            repo_id=HF_DATASET,
+            repo_type='dataset',
+        )
+        snapshots = []
+        for f in arquivos:
+            # Padrão: external/snapshots/previsao_bairros_YYYY-MM-DD.geojson
+            if f.startswith('external/snapshots/previsao_bairros_') and f.endswith('.geojson'):
+                data_str = f.replace('external/snapshots/previsao_bairros_', '').replace('.geojson', '')
+                snapshots.append(data_str)
+        return sorted(snapshots, reverse=True)
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=3600)
+def get_previsao_bairros_snapshot(data_str: str):
+    """
+    Carrega snapshot histórico de previsão por bairro do HF Hub.
+    data_str: 'YYYY-MM-DD'
+    Retorna o mesmo formato de get_previsao_bairros(): (gdf, limiares) ou (None, {})
+    """
+    try:
+        import geopandas as gpd
+        import json
+        from huggingface_hub import hf_hub_download
+
+        path = hf_hub_download(
+            repo_id=HF_DATASET,
+            filename=f'external/snapshots/previsao_bairros_{data_str}.geojson',
+            repo_type='dataset',
+            force_download=True,
+        )
+        with open(path, encoding='utf-8') as f:
+            geojson = json.load(f)
+        limiares = geojson.get('limiares_risco', {})
+        gdf = gpd.read_file(path)
+        return gdf, limiares
     except Exception:
         return None, {}

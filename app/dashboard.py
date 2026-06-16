@@ -10,6 +10,7 @@ import pandas as pd
 from components.dados import get_saude, get_historico
 from components.banner_drift import render_banner_drift
 from components.aba_mapa import render_aba_mapa
+from components.dados import get_lista_snapshots_bairros
 from components.aba_serie import render_aba_serie
 from components.aba_previsao import render_aba_previsao
 from components.aba_sobre import render_aba_sobre
@@ -46,6 +47,18 @@ with st.sidebar:
         "Município",
         options=["Todos", "Cuiabá", "Várzea Grande"],
         index=0
+    )
+
+    # Histórico de mapas — só visível na aba Mapa
+    st.markdown("---")
+    snapshots      = get_lista_snapshots_bairros()
+    opcoes_hist    = ['Semana atual'] + snapshots
+    semana_hist    = st.selectbox(
+        "🗓️ Semana do mapa",
+        options=opcoes_hist,
+        index=0,
+        help="Semana atual = previsão mais recente. "
+             "Selecione uma data anterior para comparar a evolução espacial.",
     )
 
     st.markdown("---")
@@ -114,7 +127,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 ])
 
 with aba1:
-    render_aba_mapa(horizonte, municipio_sel)
+    render_aba_mapa(horizonte, municipio_sel, semana_hist)
 
 with aba2:
     render_aba_serie(municipio_sel)

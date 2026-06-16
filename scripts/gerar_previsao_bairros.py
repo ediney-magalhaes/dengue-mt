@@ -422,9 +422,12 @@ def main():
     print(f'  Bairros: {len(gdf)} | Horizontes: {HORIZONTES}')
     print(f'  Bandas CQR 90% calibradas incluídas')
 
-    # 9. Publica no HF Hub
+    # 9. Publica no HF Hub — latest + snapshot datado
+    data_run = datetime.now().strftime('%Y-%m-%d')
     print('\nPublicando no HF Hub...')
     publicar_hf(path_out, 'external/previsao_bairros_latest.geojson')
+    publicar_hf(path_out, f'external/snapshots/previsao_bairros_{data_run}.geojson')
+    print(f'  Snapshot datado: previsao_bairros_{data_run}.geojson')
 
     # Resumo
     print(f'\n{"="*55}')

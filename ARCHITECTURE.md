@@ -140,6 +140,7 @@ flowchart TB
    Previsão municipal ──→ IDW mass-preserving ──→ 143 bairros
    Limiares adaptativos P60/P75/P85/P95 por município
    GeoJSON ──→ HF Hub (previsao_bairros_latest.geojson)
+   GeoJSON ──→ HF Hub (external/snapshots/previsao_bairros_YYYY-MM-DD.geojson)
 
 7. MONITORAMENTO (src/tasks/drift.py)
    Últimas 26 SE ──→ Wasserstein distance ──→ drift score
@@ -288,6 +289,8 @@ dbt test → PASS=59 WARN=0 ERROR=0
 | CI/CD | GitHub Actions | Execução automática domingo 06h Cuiabá |
 | MODIS mensal | GitHub Actions cron dia 5/mês | AppEEARS isolado — não impacta pipeline semanal |
 | Keep-alive | GitHub Actions cron 4h + Playwright | Chromium headless renderiza página de fato (curl insuficiente para SPAs) |
+| Boletim PDF | ReportLab + Groq API (LLaMA 3.3 70B) | PDF sob demanda com recomendações LLM para gestores — custo zero (tier gratuito Groq) |
+| Histórico mapas | GeoJSON snapshots datados no HF Hub | Navegação temporal semanal no dashboard sem infraestrutura adicional |
 | Intervalos | MAPIE 1.4 (CQR) | Conformal prediction, distribution-free |
 | Interpretabilidade | SHAP 0.51 (TreeExplainer) | Importância por feature, dependence plots |
 
@@ -365,6 +368,7 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 | v2.4.3 | Mai/2026 | ✅ | Keep-alive Playwright (curl não acordava SPA), seletor resiliente |
 | v2.5 | Jun/2026 | ✅ | SHAP Direct CQR (4 horizontes × 2 municípios), aba Explicabilidade dashboard, ADR-034 |
 | v2.6 | Jun/2026 | ✅ | Gate Champion-Challenger Direct CQR (ADR-035) — MAE + cobertura CQR + pytest por horizonte |
+| v2.7 | Jun/2026 | ✅ | Histórico de mapas (snapshots HF Hub + seletor sidebar), boletim PDF semanal com LLM (Groq/LLaMA 3.3) |
 
 ---
 

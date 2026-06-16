@@ -28,6 +28,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.7.0] — 2026-06-15
+
+### Adicionado
+- **Histórico de mapas** — seletor "Semana do mapa" no sidebar com navegação temporal
+  - Pipeline publica snapshot datado `external/snapshots/previsao_bairros_YYYY-MM-DD.geojson` além do `latest`
+  - `get_lista_snapshots_bairros()` lista datas disponíveis via `list_repo_files` HF Hub
+  - `get_previsao_bairros_snapshot(data_str)` carrega GeoJSON histórico por data
+  - Seletor integrado ao sidebar — padrão UX consistente com horizonte e município
+- **Boletim PDF semanal** — `app/components/relatorio_pdf.py` (novo módulo)
+  - Gerado sob demanda via botão na aba Mapa de Risco
+  - Reflete filtros ativos: município, horizonte e semana selecionados
+  - Seção 1: Previsão de casos por município (mediana + intervalo CQR 90%)
+  - Seção 2: Distribuição de risco por bairros (tabela com percentuais)
+  - Seção 3: Top 10 bairros — maior concentração prevista
+  - Seção 4: Situação atual determinística + recomendações operacionais via LLM
+  - Recomendações geradas por LLaMA 3.3 70B (Groq) — linguagem acessível para gestores
+  - Tendência calculada deterministicamente (variação SE+1 vs SE+8) — sem ambiguidade
+  - Rodapé metodológico com referências bibliográficas
+- **Integração Groq API** — `GROQ_API_KEY` no `.env` local e Streamlit Cloud secrets
+
+### Referências
+- EpiPlanAgent (arxiv 2512.10313, 2025) — geração de plano de resposta epidemiológica via LLM
+- PandemicLLM (Du et al., 2025) — LLM para interpretação de dados epidemiológicos
+- Shepard, D. (1968) — IDW mass-preserving (metodologia do mapa)
+
+### Commits
+- (106) snapshot datado GeoJSON + seletor histórico sidebar + dados.py
+- (107) boletim PDF + Groq LLM recomendações + botão download dashboard
+
+---
+
 ## [2.6.0] — 2026-06-02
 
 ### Adicionado

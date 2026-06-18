@@ -87,33 +87,67 @@ st.caption(
     "Cuiabá e Várzea Grande | Instituto Federal de Mato Grosso (IFMT)"
 )
 
-# ── Métricas resumo ─────────────────────────────────────────
+# ── Métricas por município ───────────────────────────────────
 df_hist = get_historico()
+
+MUNICIPIOS = {
+    5103403: "🏙️ Cuiabá",
+    5108402: "🏘️ Várzea Grande",
+}
 
 if df_hist is not None and not df_hist.empty:
     df_hist['data_se'] = pd.to_datetime(df_hist['data_se'])
     ano_atual = df_hist['data_se'].dt.year.max()
 
-    ultima_se = int(df_hist['casos_confirmados'].iloc[-1])
-    media_4se = int(df_hist['casos_confirmados'].tail(4).mean())
-    total_ano = int(
-        df_hist[df_hist['data_se'].dt.year == ano_atual]['casos_confirmados'].sum()
-    )
-    pico_ano = int(
-        df_hist[df_hist['data_se'].dt.year == ano_atual]['casos_confirmados'].max()
-    )
+    colunas_mun = st.columns(len(MUNICIPIOS))
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("📅 Última SE",
-                  f"{ultima_se} casos",
-                  delta=f"{ultima_se - media_4se:+.0f} vs média 4SE")
-    with col2:
-        st.metric("📊 Média 4 semanas", f"{media_4se} casos/SE")
-    with col3:
-        st.metric(f"📈 Total {ano_atual}", f"{total_ano:,} casos")
-    with col4:
-        st.metric(f"⚠️ Pico {ano_atual}", f"{pico_ano} casos/SE")
+    for col_idx, (mun_id, mun_nome) in enumerate(MUNICIPIOS.items()):
+        df_mun = df_hist[df_hist['municipio_id'] == mun_id].sort_values('data_se')
+
+        if df_mun.empty:
+            with colunas_mun[col_idx]:
+                st.warning(f"{mun_nome} — sem dados")
+            continue
+
+        ultima_se   = int(df_mun['casos_confirmados'].iloc[-1])
+        media_4se   = int(df_mun['casos_confirmados'].tail(4).mean())
+        media_4se_ant = int(df_mun['casos_confirmados'].iloc[-8:-4].mean()) \
+                        if len(df_mun) >= 8 else media_4se
+        total_ano   = int(df_mun[df_mun['data_se'].dt.year == ano_atual]['casos_confirmados'].sum())
+        pico_ano    = int(df_mun[df_mun['data_se'].dt.year == ano_atual]['casos_confirmados'].max())
+        data_ultima = df_mun['data_se'].iloc[-1].strftime('%d/%m/%Y')
+
+        tendencia = media_4se - media_4se_ant
+        if tendencia > 5:
+            seta = "↑ Alta"
+        elif tendencia < -5:
+            seta = "↓ Queda"
+        else:
+            seta = "→ Estável"
+
+        with colunas_mun[col_idx]:
+            st.markdown(f"#### {mun_nome}")
+            st.caption(f"Última SE registrada: {data_ultima}")
+            m1, m2 = st.columns(2)
+            with m1:
+                st.metric(
+                    "Última SE",
+                    f"{ultima_se} casos",
+                    delta=f"{ultima_se - media_4se:+.0f} vs média 4SE",
+                    delta_color="inverse",
+                )
+            with m2:
+                st.metric(
+                    "Tendência (8SE)",
+                    seta,
+                    delta=f"{tendencia:+.0f} casos/SE",
+                    delta_color="inverse",
+                )
+            m3, m4 = st.columns(2)
+            with m3:
+                st.metric(f"Total {ano_atual}", f"{total_ano:,}")
+            with m4:
+                st.metric(f"Pico {ano_atual}", f"{pico_ano} casos/SE")
 
 st.markdown("---")
 

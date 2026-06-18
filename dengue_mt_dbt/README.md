@@ -19,7 +19,7 @@ intermediate (joins — table)
     ↓
 marts (Gold ML — table)
     ↓
-data/gold/dataset_features_v5_latest.parquet
+data/gold/dataset_features_latest.parquet
 ```
 
 ---
@@ -97,7 +97,7 @@ Arquivo `macros/cast_date.sql` — padronização de tipos DATE em todo o pipeli
 |---|---|
 | `int_dengue_mt` | Join central InfoDengue (âncora) LEFT JOIN todas as fontes por (municipio_id, data_se) |
 
-Cobertura: 100% em todas as fontes | 428 SE × 2 municípios | 2018-01-07 → 2026-04-12
+Cobertura: 100% em todas as fontes | 428+ SE × 2 municípios | 2018-01-07 → 2026-06-14
 
 ### Marts (Gold)
 
@@ -105,7 +105,7 @@ Cobertura: 100% em todas as fontes | 428 SE × 2 municípios | 2018-01-07 → 20
 |---|---|
 | `mart_dengue_features` | Dataset final para ML — 54 features com lags epidemiológicos anti-leakage |
 
-Gold v5: 856 registros (428 SE × 2 municípios) | 2018-02-04 → 2026-04-12
+Gold v5: ~880 registros (428+ SE × 2 municípios) | 2018-02-04 → 2026-06-14
 
 ---
 

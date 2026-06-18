@@ -1,8 +1,8 @@
 # Dicionário de Dados — Dengue MT
 
-> Dataset: `gold/dataset_features_v5_latest.parquet`
+> Dataset: `gold/dataset_features_latest.parquet`
 > Granularidade: **semanal por município** (semana epidemiológica)
-> Período: 2018-02-04 → 2026-04-12 | 856 registros (428 por município)
+> Período: 2018-02-04 → 2026-06-14 | ~880 registros (428+ por município)
 > Versão: Gold v5 (refatorado com dbt-core + DuckDB)
 
 ---
@@ -122,6 +122,7 @@
 | Colunas de identificação | 6 (municipio_id, municipio_nome, data_se, semana_epidemiologica, populacao, dbt_updated_at) |
 | Colunas excluídas do treino | 2 (casos_estimados, incidencia_100k) |
 | Dataset version | Gold v5 |
+| Última atualização | 2026-06-14 |
 | Modelo | LightGBM v5 — R²=0.741 ± 0.081 \| MAE=9.7 (TimeSeriesSplit 5-fold) |
 | Backtesting | MASE=0.59 (h=4) \| MAE=17.9 (expanding window 2023→2026) |
 
@@ -143,4 +144,4 @@ O LightGBM lida naturalmente com redundância sem degradação de performance (c
 
 ---
 
-*Atualizado em 11/05/2026 — Sessão EDA + Backtesting*
+*Atualizado em 17/06/2026 — período Gold estendido até 2026-06-14*

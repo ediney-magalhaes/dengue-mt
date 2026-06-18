@@ -203,7 +203,7 @@ Resultado: 428 SE × 2 municípios | 2018-01-07 → 2026-04-12
 
 Dataset pronto para treino com lags epidemiológicos anti-leakage. Responsabilidade: `dengue_mt_dbt/models/marts/`.
 
-Arquivo: `data/gold/dataset_features_v5_latest.parquet`
+Arquivo: `data/gold/dataset_features_latest.parquet`
 Publicado em: `edyestatistica/dengue-mt-medallion` (HF Hub)
 
 | Grupo | Features | Lags aplicados |
@@ -369,6 +369,7 @@ Janela de avaliação: últimas 26 SE. Referência: 52 SE anteriores.
 | v2.5 | Jun/2026 | ✅ | SHAP Direct CQR (4 horizontes × 2 municípios), aba Explicabilidade dashboard, ADR-034 |
 | v2.6 | Jun/2026 | ✅ | Gate Champion-Challenger Direct CQR (ADR-035) — MAE + cobertura CQR + pytest por horizonte |
 | v2.7 | Jun/2026 | ✅ | Histórico de mapas (snapshots HF Hub + seletor sidebar), boletim PDF semanal com LLM (Groq/LLaMA 3.3) |
+| v2.7.1 | Jun/2026 | ✅ | Header métricas por município (Cuiabá/VG separados, tendência 8SE), limpeza HF Hub (arquivo legado v5) |
 
 ---
 

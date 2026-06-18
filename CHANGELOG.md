@@ -28,6 +28,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.7.1] — 2026-06-17
+
+### Adicionado
+- **Header de métricas por município** — `app/dashboard.py` redesenhado
+  - Cuiabá e Várzea Grande exibidos lado a lado com métricas independentes
+  - Por município: última SE, tendência 8SE (↑↓→), total do ano e pico do ano
+  - Tendência calculada como variação entre média das últimas 4SE vs 4SE anteriores
+  - `delta_color="inverse"` — queda de casos indicada em verde (epidemiologicamente correto)
+  - Data da última SE registrada exibida como caption por município
+
+### Infraestrutura
+- **Limpeza HF Hub** — arquivo legado `gold/dataset_features_v5_latest.parquet` removido
+  - Substituído por `gold/dataset_features_latest.parquet` desde v2.4.0
+  - Nenhum módulo do pipeline ou dashboard referenciava o arquivo removido
+
+### Commits
+- (110) `3eddeef` — header métricas por município + limpeza HF Hub
+
+
+---
+
 ## [2.7.0] — 2026-06-15
 
 ### Adicionado

@@ -9,6 +9,7 @@
 
 import streamlit as st
 import folium
+import os
 from streamlit_folium import st_folium
 from components.dados import get_previsao_bairros
 from components.dados import get_previsao_bairros, get_previsao_bairros_snapshot
@@ -27,6 +28,24 @@ MUNICIPIOS = {
     '5108402': 'Várzea Grande',
 }
 
+def _get_carto_key() -> str:
+    """
+    Busca a chave CARTO API — variável de ambiente (.env local)
+    ou secrets do Streamlit Cloud (produção).
+    """
+    chave = os.getenv('CARTO_API_KEY')
+    if chave:
+        return chave
+    try:
+        return st.secrets.get('CARTO_API_KEY', '')
+    except Exception:
+        return ''
+
+
+CARTO_API_KEY = _get_carto_key()
+CARTO_TILES_URL = (
+    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=' + CARTO_API_KEY
+)
 
 def _gerar_legenda_html(limiares: dict, mun_sel: str) -> str:
     """
@@ -148,11 +167,28 @@ def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos', semana_hist: str
     )
     zoom = 11 if mun_sel == 'Todos' else 12
 
+    if not CARTO_API_KEY:
+        st.warning(
+            "⚠️ CARTO_API_KEY não configurada — o mapa pode exibir "
+            "marca d'água 'API KEY REQUIRED'. Configure a chave no .env."
+        )
+
     mapa = folium.Map(
         location=centro,
         zoom_start=zoom,
-        tiles='CartoDB positron'
+        tiles=None,
     )
+    folium.TileLayer(
+        tiles=CARTO_TILES_URL,
+        attr=(
+            '&copy; <a href="https://www.openstreetmap.org/copyright">'
+            'OpenStreetMap</a> contributors &copy; '
+            '<a href="https://carto.com/attributions">CARTO</a>'
+        ),
+        name='CartoDB Positron',
+        subdomains='abcd',
+        max_zoom=20,
+    ).add_to(mapa)
 
     for _, row in gdf_fil.iterrows():
         cor   = CORES_RISCO.get(row[col_nivel], '#4575b4')

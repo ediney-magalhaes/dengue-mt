@@ -254,51 +254,72 @@ def consolidar_resultados(df_recursivo, df_direto):
 
 
 def calcular_todas_metricas(df_resultados):
-    """Calcula métricas por horizonte, estratégia e período."""
+    """
+    Calcula métricas por horizonte, estratégia, período E município.
+    
+    A coluna Municipio inclui:
+      - 'Ambos' (agregado — Cuiabá + Várzea Grande) — mantém compatibilidade
+      - 'Cuiabá' (municipio_id=5103403)
+      - 'Várzea Grande' (municipio_id=5108402)
+    """
     tabelas = []
+
+    # Recortes de município: agregado + cada um separado
+    recortes_municipio = [
+        ("Ambos", None),                # None = não filtra, usa tudo
+        ("Cuiabá", 5103403),
+        ("Várzea Grande", 5108402),
+    ]
 
     for horizonte in HORIZONTES:
         dh = df_resultados[df_resultados["horizonte"] == horizonte]
 
         for periodo in ["Geral", "2023", "2024", "2025-2026"]:
             if periodo == "Geral":
-                dp = dh
+                dp_periodo = dh
             else:
-                dp = dh[dh["periodo"] == periodo]
+                dp_periodo = dh[dh["periodo"] == periodo]
 
-            if len(dp) < 5:
-                continue
+            for nome_mun, mun_id in recortes_municipio:
+                if mun_id is None:
+                    dp = dp_periodo
+                else:
+                    dp = dp_periodo[dp_periodo["municipio_id"] == mun_id]
 
-            y_real = dp["y_real"].values
-
-            for estrategia, col_pred in [
-                ("Recursivo", "y_pred_recursivo"),
-                ("Direto", "y_pred_direto"),
-                ("Naïve", "y_naive"),
-                ("MM4", "y_mm4"),
-            ]:
-                if col_pred not in dp.columns or dp[col_pred].isna().all():
+                if len(dp) < 5:
                     continue
 
-                y_pred = dp[col_pred].values
+                y_real = dp["y_real"].values
 
-                # Remover NaN
-                mask_valid = ~(np.isnan(y_real) | np.isnan(y_pred))
-                if mask_valid.sum() < 5:
-                    continue
+                for estrategia, col_pred in [
+                    ("Recursivo", "y_pred_recursivo"),
+                    ("Direto", "y_pred_direto"),
+                    ("Naïve", "y_naive"),
+                    ("MM4", "y_mm4"),
+                ]:
+                    if col_pred not in dp.columns or dp[col_pred].isna().all():
+                        continue
 
-                metricas = calcular_metricas(
-                    y_real[mask_valid],
-                    y_pred[mask_valid],
-                    y_naive=dp["y_naive"].values[mask_valid] if "y_naive" in dp.columns else None,
-                )
+                    y_pred = dp[col_pred].values
 
-                tabelas.append({
-                    "Horizonte": f"h={horizonte}",
-                    "Estratégia": estrategia,
-                    "Período": periodo,
-                    **metricas,
-                })
+                    # Remover NaN
+                    mask_valid = ~(np.isnan(y_real) | np.isnan(y_pred))
+                    if mask_valid.sum() < 5:
+                        continue
+
+                    metricas = calcular_metricas(
+                        y_real[mask_valid],
+                        y_pred[mask_valid],
+                        y_naive=dp["y_naive"].values[mask_valid] if "y_naive" in dp.columns else None,
+                    )
+
+                    tabelas.append({
+                        "Horizonte": f"h={horizonte}",
+                        "Estratégia": estrategia,
+                        "Período": periodo,
+                        "Municipio": nome_mun,
+                        **metricas,
+                    })
 
     return pd.DataFrame(tabelas)
 
@@ -505,21 +526,32 @@ def main():
     df_metricas.to_csv(path_met, index=False, float_format="%.3f")
     print(f"  ✅ Métricas salvas: {path_met}")
 
-    # Exibir tabela resumo
+    # Exibir tabela resumo — MÉTRICAS GERAIS AGREGADAS (ambos municípios)
     print("\n" + "=" * 60)
-    print("RESULTADOS — MÉTRICAS GERAIS")
+    print("RESULTADOS — MÉTRICAS GERAIS (AMBOS OS MUNICÍPIOS)")
     print("=" * 60)
-    geral = df_metricas[df_metricas["Período"] == "Geral"][
-        ["Horizonte", "Estratégia", "MAE", "RMSE", "R2", "MASE", "N"]
-    ]
-    print(geral.to_string(index=False))
+    geral_ambos = df_metricas[
+        (df_metricas["Período"] == "Geral") & (df_metricas["Municipio"] == "Ambos")
+    ][["Horizonte", "Estratégia", "MAE", "RMSE", "R2", "MASE", "N"]]
+    print(geral_ambos.to_string(index=False))
+
+    # Exibir tabela resumo — POR MUNICÍPIO (Geral)
+    print("\n" + "=" * 60)
+    print("RESULTADOS — POR MUNICÍPIO (PERÍODO GERAL)")
+    print("=" * 60)
+    for nome_mun in ["Cuiabá", "Várzea Grande"]:
+        print(f"\n  {nome_mun}:")
+        sub = df_metricas[
+            (df_metricas["Período"] == "Geral") & (df_metricas["Municipio"] == nome_mun)
+        ][["Horizonte", "Estratégia", "MAE", "RMSE", "R2", "MASE", "N"]]
+        print(sub.to_string(index=False))
 
     print("\n" + "=" * 60)
-    print("RESULTADOS — POR PERÍODO")
+    print("RESULTADOS — POR PERÍODO (AMBOS OS MUNICÍPIOS)")
     print("=" * 60)
-    por_periodo = df_metricas[df_metricas["Período"] != "Geral"][
-        ["Horizonte", "Estratégia", "Período", "MAE", "R2"]
-    ]
+    por_periodo = df_metricas[
+        (df_metricas["Período"] != "Geral") & (df_metricas["Municipio"] == "Ambos")
+    ][["Horizonte", "Estratégia", "Período", "MAE", "R2"]]
     print(por_periodo.to_string(index=False))
 
     # Gráficos

@@ -28,6 +28,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.7.2] — 2026-09-01
+
+### Corrigido
+- **CARTO Basemaps exigindo API key** — endpoint anônimo (`tiles='CartoDB positron'`) descontinuado pela CARTO em 28/08/2026; produção passou a exibir marca d'água "API KEY REQUIRED" sobre o mapa
+  - Migrado para `folium.TileLayer` explícito com `CARTO_API_KEY` (variável de ambiente local + Streamlit Cloud secrets)
+  - Endpoint atualizado: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=...`
+  - `st.warning()` de fallback caso a chave não esteja configurada
+- **Mapa não responsivo em mobile** — `st_folium` usava `width=None` (não reconhecido pela biblioteca como responsivo); substituído por `use_container_width=True`
+  - Legenda de classificação de risco migrada de overlay HTML fixo sobre o mapa para `st.expander()` — eliminava disputa de espaço em telas estreitas
+- **Modelo Groq `llama-3.3-70b-versatile` descontinuado** (decommissioned 16/08/2026) — seção 4 do boletim PDF (recomendações) retornava erro 404
+  - Migrado para `openai/gpt-oss-120b` (substituto recomendado oficialmente pela Groq)
+  - Nome do modelo centralizado via `GROQ_MODEL = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')` — evita necessidade de commit em descontinuações futuras
+
+### Adicionado
+- **Backtesting estratificado por município** — `notebooks/backtesting/01_backtesting_expanding.py`
+  - Métricas calculadas para "Ambos" (agregado, compatibilidade) + Cuiabá + Várzea Grande separadamente
+  - Reprodutibilidade da Tabela 4 do artigo CBIS'26 (aceito) — versão anterior não estava commitada
+- **Script de figura otimizada para apresentação oral** — `scripts/fig_slide_cqr.py`
+  - Replota bandas CQR 90% a partir de `previsoes_com_intervalos.csv` já calculado — zero retreino
+  - Fontes ampliadas para leitura em telão (eixos 20pt, legenda 18pt), meses em português
+  - Saída: `reports/intervalos/fig_slide_cqr_90pct.png`
+
+### Referências
+- CARTO (2026) — Política de API key para Basemaps, efetiva 28/08/2026: carto.com/basemaps/apikey
+- Groq (2026) — Model deprecations: llama-3.3-70b-versatile descontinuado 16/08/2026, migração recomendada para openai/gpt-oss-120b: console.groq.com/docs/deprecations
+
+### Commits
+- (112) fix chave API CARTO para tiles Positron
+- (113) estratificação de métricas de backtesting por município
+- (114) script de replot CQR para apresentação CBIS'26
+- (115) mapa responsivo mobile — use_container_width + legenda expander
+- (116) fix modelo Groq descontinuado — migração para openai/gpt-oss-120b
+
+---
+
 ## [2.7.1] — 2026-06-17
 
 ### Adicionado

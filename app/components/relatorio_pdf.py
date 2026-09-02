@@ -26,6 +26,7 @@ from reportlab.platypus import (
 )
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
+GROQ_MODEL = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
 
 # ── Cores institucionais ──────────────────────────────────────
 COR_PRIMARIA   = colors.HexColor('#1a5276')
@@ -82,7 +83,7 @@ REGRAS:
 Escreva apenas as 4 recomendações, nada mais."""
 
         resp = client.chat.completions.create(
-            model='llama-3.3-70b-versatile',
+            model=GROQ_MODEL,
             messages=[{'role': 'user', 'content': prompt}],
             max_tokens=600,
             temperature=0.2,
@@ -345,7 +346,7 @@ def gerar_pdf_boletim(
     # Recomendações via LLM
     elementos.append(Paragraph("RECOMENDAÇÕES OPERACIONAIS PARA ESTA SEMANA", estilo_secao))
     elementos.append(Paragraph(
-        "Geradas por IA (LLaMA 3.3 70B via Groq) — validar com o técnico de vigilância epidemiológica.",
+        "Geradas por IA (GPT-OSS 120B via Groq) — validar com o técnico de vigilância epidemiológica.",
         estilo_nota
     ))
     elementos.append(Spacer(1, 4))
@@ -381,7 +382,7 @@ def gerar_pdf_boletim(
         "Metodologia: Previsão via LightGBM Direct Multi-Step CQR (4 horizontes × 3 quantis, cobertura 90% calibrada). "
         "Distribuição espacial por IDW mass-preserving (Shepard, 1968). "
         "Limiares adaptativos por percentis (P60/P75/P85/P95) recalculados semanalmente. "
-        "Recomendações por LLaMA 3.3 70B (Groq) com prompt baseado em EpiPlanAgent (2025) e PandemicLLM (Du et al., 2025). "
+        "Recomendações por GPT-OSS 120B (Groq) com prompt baseado em EpiPlanAgent (2025) e PandemicLLM (Du et al., 2025). "
         "Sistema desenvolvido pelo Instituto Federal de Mato Grosso (IFMT) — Projeto de Extensão 2026.",
         estilo_nota
     ))

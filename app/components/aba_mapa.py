@@ -89,13 +89,9 @@ def _gerar_legenda_html(limiares: dict, mun_sel: str) -> str:
         )
 
     return f"""
-    <div style="position: fixed; bottom: 30px; left: 30px; z-index: 1000;
-         background-color: white; padding: 12px; border-radius: 8px;
-         border: 2px solid #ccc; font-size: 11px; line-height: 1.7;
-         max-height: 350px; overflow-y: auto;">
-    <b>🦟 Casos Previstos — Dengue MT</b><br>
+    <div style="font-size: 13px; line-height: 1.8;">
     {linhas}
-    <hr style="margin:4px 0">
+    <hr style="margin:8px 0">
     <i>Previsão LightGBM Direct CQR × IDW</i><br>
     <i>Limiares adaptativos (percentis)</i>
     </div>
@@ -230,10 +226,11 @@ def render_aba_mapa(horizonte: int = 2, mun_sel: str = 'Todos', semana_hist: str
         ).add_to(mapa)
 
     # Legenda dinâmica
-    legenda_html = _gerar_legenda_html(limiares, mun_sel)
-    mapa.get_root().html.add_child(folium.Element(legenda_html))
+    st_folium(mapa, use_container_width=True, height=560, returned_objects=[])
 
-    st_folium(mapa, width=None, height=560, returned_objects=[])
+    with st.expander("🔍 Ver legenda de classificação de risco"):
+        legenda_html = _gerar_legenda_html(limiares, mun_sel)
+        st.markdown(legenda_html, unsafe_allow_html=True)
 
     # ── Tabela top bairros ────────────────────────────────────
     st.markdown(

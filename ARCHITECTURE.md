@@ -105,8 +105,8 @@ flowchart TB
 2. INGESTÃO (src/ingestion/ — responsabilidade única Bronze)
    InfoDengue API  ──→  data/bronze/infodengue/
    NASA POWER API  ──→  data/bronze/nasa_power/
-   NOAA ONI        ──→  data/bronze/oni/
-   Google Trends   ──→  data/bronze/trends/
+   NOAA ONI        ──→  data/bronze/oni/         (fallback: cache local, ADR-036)
+   Google Trends   ──→  data/bronze/trends/      (fallback: cache local, ADR-036)
    MODIS AppEEARS  ──→  data/bronze/modis/ (skip se já existe)
 
 3. PUBLICAÇÃO BRONZE (src/tasks/publicacao.py)

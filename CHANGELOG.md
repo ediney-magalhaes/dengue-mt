@@ -28,6 +28,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [2.7.3] — 2026-10-03
+
+### Corrigido
+- **Permissão read-only no restore do HF Hub** — `restore_artifacts_hf.py` usava `shutil.copy()` para copiar arquivos do cache do `huggingface_hub` para `data/bronze/`; no Linux (GitHub Actions `ubuntu-latest`), blobs em cache são somente-leitura (symlink), e `shutil.copy()` preserva essa permissão, causando `Permission denied` ao sobrescrever `oni_index_latest.parquet` e `trends_dengue_latest.parquet` nas execuções seguintes
+  - Migrado para `shutil.copyfile()` + `path_local.chmod(0o644)` explícito — não reproduzível localmente no Windows (symlinks desabilitados por padrão), só detectável em ambiente Linux real
+  - Correção sistêmica: mesma função usada pelas 4 flags (`--gold`, `--modelo`, `--schema`, `--bronze`)
+- **Fallback de cache não conectado nas ingestões** — `src/tasks/cache.py` (`salvar_cache`/`carregar_cache`) existia desde v1.1.0 mas nunca era chamado por `ingerir_oni_index`/`ingerir_google_trends`; uma falha de API resultava em erro direto, sem tentar o último dado válido
+  - Fallback conectado nas duas tasks — falha de API agora usa cache local (`fallback: True`) antes de propagar erro
+- **Encoding Unicode quebrando no Windows** — `gerar_previsao_bairros.py` imprimia caractere `→` (U+2192), causando `UnicodeEncodeError` sob o codec `cp1252` padrão do console Windows quando o script roda como subprocess; não reproduzível no Linux/GitHub Actions (console UTF-8)
+  - Corrigido via `sys.stdout.reconfigure(encoding='utf-8')` / `sys.stderr.reconfigure(...)` no início do script
+- **Campo "Detalhes" vazio nos alertas Telegram de ingestão** — `alerta_ingestao()` aceitava um parâmetro `detalhes` nunca preenchido pelas chamadas em `pipeline_prefect.py`, e os `except` em `ingestao.py` não capturavam a mensagem de erro no dicionário de retorno
+  - Erro capturado via `'erro': str(e)` nos retornos de falha (com e sem fallback); `pipeline_prefect.py` agora passa esse campo para `alerta_ingestao()` e dispara alerta também quando o fallback é acionado (antes só disparava em erro total)
+- **`STATUS=?` no log estruturado para `treinar_direto_cqr` e `gate_promocao_direct_cqr`** — `log_etapa()` espera uma chave `status` no dicionário retornado, ausente nos dois retornos dessas tasks
+  - Adicionado `'status': 'ok'` em `treinar_direto_cqr`; `'status': 'ok' if promovido else 'reprovado'` nos dois pontos de retorno do gate
+
+### Documentação
+- **ADR-036** — Correção de permissão no restore do HF Hub e conexão do fallback de cache
+- `ARCHITECTURE.md` — etapa 2 do Fluxo Semanal atualizada com referência ao fallback de cache (ONI, Google Trends)
+
+### Referências
+- Hugging Face Hub docs — Manage your cache: https://huggingface.co/docs/huggingface_hub/en/guides/manage-cache
+
+### Commits
+- (118) `ce9ef4f` — fix: corrige permissao read-only em restore_artifacts_hf (copyfile + chmod)
+- (119) `d2d2e80` — fix: forca encoding UTF-8 na saida do script de previsao por bairro (Windows)
+- (120) `8f8ecaf` — fix: propaga mensagem de erro para alertas Telegram e status para log estruturado
+
+---
+
 ## [2.7.2] — 2026-09-01
 
 ### Corrigido

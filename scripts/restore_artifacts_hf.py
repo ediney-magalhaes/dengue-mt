@@ -38,7 +38,8 @@ def restore_arquivo(hf_hub_download, path_hf: str, path_local: Path) -> bool:
             repo_type='dataset',
             token=HF_TOKEN,
         )
-        shutil.copy(downloaded, path_local)
+        shutil.copyfile(downloaded, path_local) #copyfile não herda o modo (read-only) do blob em cache do HF Hub
+        path_local.chmod(0o644) #garante escrita, independente de como o huggingface_hub trata o cache internamente
         print(f'  OK: {path_local}')
         return True
     except Exception as e:

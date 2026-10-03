@@ -94,14 +94,24 @@ def pipeline_semanal():
     t0 = time.time()
     resultado_oni = ingerir_oni_index(data_corte=data_corte)
     log_etapa('ingest_oni', t0, resultado_oni)
-    if resultado_oni.get('status') == 'erro':
-        alerta_ingestao('oni', resultado_oni.get('status'), False)
+    if resultado_oni.get('status') == 'erro' or resultado_oni.get('fallback'):
+        alerta_ingestao(
+            'oni',
+            resultado_oni.get('status'),
+            resultado_oni.get('fallback', False),
+            resultado_oni.get('erro', '')
+        )
 
     t0 = time.time()
     resultado_trends = ingerir_google_trends(data_corte=data_corte)
     log_etapa('ingest_trends', t0, resultado_trends)
-    if resultado_trends.get('status') == 'erro':
-        alerta_ingestao('google_trends', resultado_trends.get('status'), False)
+    if resultado_trends.get('status') == 'erro' or resultado_trends.get('fallback'):
+        alerta_ingestao(
+            'google_trends',
+            resultado_trends.get('status'),
+            resultado_trends.get('fallback', False),
+            resultado_trends.get('erro', '')
+        )
 
     t0 = time.time()
     resultado_modis = ingerir_modis(usuario=MODIS_USUARIO, senha=MODIS_SENHA)

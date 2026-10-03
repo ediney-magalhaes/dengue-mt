@@ -61,25 +61,26 @@ def ingerir_oni_index(data_corte=None):
     """ONI NOAA → Bronze. Silver é responsabilidade do dbt."""
     logger = get_run_logger()
     logger.info("Iniciando ingestão ONI Index NOAA → Bronze...")
- 
+
+    from src.tasks.cache import salvar_cache, carregar_cache
+
     try:
         from src.ingestion.oni import ingerir_bronze
         df = ingerir_bronze()
- 
+
         if df is None:
             raise ValueError("ONI retornou None")
- 
+
+        salvar_cache('oni_index', df)
         logger.info(f"ONI Bronze — {len(df)} trimestres salvos")
-        return {
-            'status':       'ok',
-            'n_registros':  len(df),
-            'fonte':        'oni',
-            'fallback':     False
-        }
- 
+        return {'status': 'ok', 'n_registros': len(df), 'fonte': 'oni', 'fallback': False}
+
     except Exception as e:
         logger.error(f"ONI erro: {e}")
-        return {'status': 'erro', 'fonte': 'oni', 'fallback': False}
+        df_cache = carregar_cache('oni_index')
+        if df_cache is not None:
+            logger.warning(f"ONI — usando fallback de cache ({len(df_cache)} registros)")
+            return {'status': 'ok', 'n_registros': len(df_cache), 'fonte': 'oni', 'fallback': True, 'erro': str(e)}
  
  
 @task(name="ingest_google_trends", retries=2, retry_delay_seconds=120)
@@ -87,25 +88,27 @@ def ingerir_google_trends(data_corte=None):
     """Google Trends → Bronze. Silver é responsabilidade do dbt."""
     logger = get_run_logger()
     logger.info("Iniciando ingestão Google Trends → Bronze...")
- 
+
+    from src.tasks.cache import salvar_cache, carregar_cache
+
     try:
         from src.ingestion.trends import ingerir_bronze
         df = ingerir_bronze(data_corte=data_corte)
- 
+
         if df is None:
             raise ValueError("Trends retornou None")
- 
+
+        salvar_cache('google_trends', df)
         logger.info(f"Trends Bronze — {len(df)} semanas salvas")
-        return {
-            'status':    'ok',
-            'n_semanas': len(df),
-            'fonte':     'google_trends',
-            'fallback':  False
-        }
- 
+        return {'status': 'ok', 'n_semanas': len(df), 'fonte': 'google_trends', 'fallback': False}
+
     except Exception as e:
         logger.error(f"Google Trends erro: {e}")
-        return {'status': 'erro', 'fonte': 'google_trends', 'fallback': False}
+        df_cache = carregar_cache('google_trends')
+        if df_cache is not None:
+            logger.warning(f"Trends — usando fallback de cache ({len(df_cache)} registros)")
+            return {'status': 'ok', 'n_semanas': len(df_cache), 'fonte': 'google_trends', 'fallback': True, 'erro': str(e)}
+        return {'status': 'erro', 'fonte': 'google_trends', 'fallback': False, 'erro': str(e)}
  
  
 @task(name="ingest_modis", retries=2, retry_delay_seconds=120)

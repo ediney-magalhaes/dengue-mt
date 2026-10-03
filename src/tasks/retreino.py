@@ -332,6 +332,7 @@ def gate_promocao_direct_cqr(metadata_novo: dict) -> dict:
     if not DIRECT_METADATA_PATH.exists():
         logger.info("Primeira execução — sem Champion anterior. Gate aprovado automaticamente.")
         return {
+            'status':           'ok',
             'promovido':        True,
             'criterios':        {'bootstrap': True},
             'motivo_rejeicao':  None,
@@ -445,6 +446,7 @@ def gate_promocao_direct_cqr(metadata_novo: dict) -> dict:
         logger.warning("  Champion mantido — arquivos latest não alterados.")
 
     return {
+        'status':           'ok' if promovido else 'reprovado',
         'promovido':        promovido,
         'criterios':        criterios,
         'motivo_rejeicao':  motivo_rejeicao,

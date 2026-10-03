@@ -218,6 +218,7 @@ def treinar_direto_cqr(data_corte=None, params_override: dict = None):
 
     # ── 4. Treinar 12 modelos ─────────────────────────────
     metadata = {
+        'status':       'ok',
         'versao':       'direct_cqr_v1',
         'horizontes':   HORIZONTES_DIRECT,
         'quantis':      QUANTIS_CQR,

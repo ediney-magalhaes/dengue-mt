@@ -39,6 +39,11 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+import sys
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+
 load_dotenv()
 
 HF_REPO_ID = 'edyestatistica/dengue-mt-medallion'
